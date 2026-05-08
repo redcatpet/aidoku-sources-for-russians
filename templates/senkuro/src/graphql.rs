@@ -10,7 +10,7 @@ use serde::Serialize;
 // API key the public app doesn't have, so we switched to the website's own
 // Relay-paginated `mangas()` field. Same node shape, cursor-based pagination via
 // pageInfo { hasNextPage endCursor }, no auth required.
-pub const MANGAS_QUERY: &str = r#"query mangasCatalog($first: Int!, $after: String, $search: String, $type: MangaTypeFilter, $status: MangaStatusFilter, $label: MangaGenreFilter, $format: MangaGenreFilter, $rating: MangaTagFilter) { mangas(first: $first, after: $after, search: $search, type: $type, status: $status, label: $label, format: $format, rating: $rating) { edges { node { id slug originalName { lang content } titles { lang content } alternativeNames { lang content } cover { original { url } } } } pageInfo { hasNextPage endCursor } } }"#;
+pub const MANGAS_QUERY: &str = r#"query mangasCatalog($first: Int!, $after: String, $search: String, $type: MangaTypeFilter, $status: MangaStatusFilter) { mangas(first: $first, after: $after, search: $search, type: $type, status: $status) { edges { node { id slug originalName { lang content } titles { lang content } alternativeNames { lang content } cover { original { url } } } } pageInfo { hasNextPage endCursor } } }"#;
 
 pub const DETAILS_QUERY: &str = r#"query fetchTachiyomiManga($mangaId: ID!) { mangaTachiyomiInfo(mangaId: $mangaId) { id slug originalName { lang content } titles { lang content } alternativeNames { lang content } localizations { lang description } type rating status formats labels { id rootId slug titles { lang content } } translationStatus cover { original { url } } mainStaff { roles person { name } } } }"#;
 
@@ -40,12 +40,6 @@ pub struct MangasVariables {
 	pub kind: Option<FiltersDto>,
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub status: Option<FiltersDto>,
-	#[serde(skip_serializing_if = "Option::is_none")]
-	pub label: Option<FiltersDto>,
-	#[serde(skip_serializing_if = "Option::is_none")]
-	pub format: Option<FiltersDto>,
-	#[serde(skip_serializing_if = "Option::is_none")]
-	pub rating: Option<FiltersDto>,
 }
 
 #[derive(Serialize, Default, Clone)]

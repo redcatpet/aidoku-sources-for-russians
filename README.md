@@ -7,8 +7,9 @@
 В приложении Aidoku → Settings → Source Lists → Add Source List → вставьте URL:
 
 ```
-https://sw1tchtaks.github.io/aidoku-sources-for-russians/index.min.json
+https://redcatpet.github.io/aidoku-sources-for-russians/index.min.json
 ```
+
 
 После этого источники появятся в списке доступных и их можно установить.
 
@@ -18,7 +19,7 @@ https://sw1tchtaks.github.io/aidoku-sources-for-russians/index.min.json
 
 | Источник | Сайт | Версия | Статус | Содержимое |
 |----------|------|:---:|--------|------------|
-| [Senkuro](sources/ru.senkuro/) | https://senkuro.com | v6 | работает | манга, манхва, маньхуа, комиксы |
+| [Senkuro](sources/ru.senkuro/) | https://senkuro.com | v7 | работает | манга, манхва, маньхуа, комиксы |
 | [ReadManga](sources/ru.readmanga/) | https://readmanga.live | v3 | beta · web-login + token | манга (Grouple) |
 | [MangaBuff](sources/ru.mangabuff/) | https://mangabuff.ru | v1 | beta | манга, манхва |
 | [Ranobes](sources/ru.ranobes/) | https://ranobes.com | v5 | beta | ранобэ (текст + иллюстрации) |

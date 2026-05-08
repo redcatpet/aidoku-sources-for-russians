@@ -71,12 +71,12 @@ impl<C: Config> Source for SenkuroEngine<C> {
 		page: i32,
 		filters: Vec<FilterValue>,
 	) -> Result<MangaPageResult> {
-		let mut label = FiltersDto::default();
+		let mut _label = FiltersDto::default();
 		let mut kind = FiltersDto::default();
-		let mut format = FiltersDto::default();
+		let mut _format = FiltersDto::default();
 		let mut status = FiltersDto::default();
 		let mut translation_status = FiltersDto::default();
-		let mut rating = FiltersDto::default();
+		let mut _rating = FiltersDto::default();
 
 		for f in filters {
 			match f {
@@ -87,8 +87,8 @@ impl<C: Config> Source for SenkuroEngine<C> {
 				} => {
 					if id.starts_with("label") {
 						// Genre groups: dynamic filter ids look like "label_TEFCRUw6NQ".
-						label.include.extend(included);
-						label.exclude.extend(excluded);
+						_label.include.extend(included);
+						_label.exclude.extend(excluded);
 					} else {
 						match id.as_str() {
 							"type" => {
@@ -96,8 +96,8 @@ impl<C: Config> Source for SenkuroEngine<C> {
 								kind.exclude.extend(excluded);
 							}
 							"format" => {
-								format.include.extend(included);
-								format.exclude.extend(excluded);
+								_format.include.extend(included);
+								_format.exclude.extend(excluded);
 							}
 							"status" => {
 								status.include.extend(included);
@@ -108,8 +108,8 @@ impl<C: Config> Source for SenkuroEngine<C> {
 								translation_status.exclude.extend(excluded);
 							}
 							"rating" => {
-								rating.include.extend(included);
-								rating.exclude.extend(excluded);
+								_rating.include.extend(included);
+								_rating.exclude.extend(excluded);
 							}
 							_ => {}
 						}
@@ -117,10 +117,10 @@ impl<C: Config> Source for SenkuroEngine<C> {
 				}
 				FilterValue::Select { id, value } => match id.as_str() {
 					"type" => kind.include.push(value),
-					"format" => format.include.push(value),
+					"format" => _format.include.push(value),
 					"status" => status.include.push(value),
 					"translationStatus" => translation_status.include.push(value),
-					"rating" => rating.include.push(value),
+					"rating" => _rating.include.push(value),
 					_ => {}
 				},
 				_ => {}
@@ -130,19 +130,19 @@ impl<C: Config> Source for SenkuroEngine<C> {
 		// Senkuro's permanent 18+ exclude.
 		for g in C::EXCLUDE_GENRES {
 			let slug: &str = g;
-			if !label.exclude.iter().any(|x| x.as_str() == slug) {
-				label.exclude.push(slug.to_string());
+			if !_label.exclude.iter().any(|x| x.as_str() == slug) {
+				_label.exclude.push(slug.to_string());
 			}
 		}
 
 		// Senkognito's permanent 18+ include — only kicks in when the user
 		// hasn't already picked an explicit rating filter, otherwise the
 		// user's choice wins.
-		if rating.include.is_empty() && rating.exclude.is_empty() {
+		if _rating.include.is_empty() && _rating.exclude.is_empty() {
 			for r in C::DEFAULT_RATING_INCLUDE {
 				let slug: &str = r;
-				if !rating.include.iter().any(|x| x.as_str() == slug) {
-					rating.include.push(slug.to_string());
+				if !_rating.include.iter().any(|x| x.as_str() == slug) {
+					_rating.include.push(slug.to_string());
 				}
 			}
 		}
@@ -167,9 +167,6 @@ impl<C: Config> Source for SenkuroEngine<C> {
 			search: trimmed_query,
 			kind: kind.into_option(),
 			status: status.into_option(),
-			label: label.into_option(),
-			format: format.into_option(),
-			rating: rating.into_option(),
 		};
 		// translationStatus is intentionally not forwarded — the new mangas()
 		// field doesn't accept it. The filter is still surfaced in the UI for
@@ -301,8 +298,8 @@ impl<C: Config> DeepLinkHandler for SenkuroEngine<C> {
 }
 
 impl<C: Config> SenkuroEngine<C> {
-	/// Build a `mangas()` request with at most a single type filter applied,
-	/// plus the per-source default rating include / genre exclude. Used by
+	/// Build a `mangas()` request with at most a single type filter applied.
+	/// Used by
 	/// both [`ListingProvider`] tabs and the home layout sections. Reuses the
 	/// listing-specific cursor cache so successive pages of the same listing
 	/// continue from where the last one stopped.
@@ -314,18 +311,6 @@ impl<C: Config> SenkuroEngine<C> {
 		let mut kind = FiltersDto::default();
 		if let Some(t) = type_slug {
 			kind.include.push(t.to_string());
-		}
-
-		let mut rating = FiltersDto::default();
-		for r in C::DEFAULT_RATING_INCLUDE {
-			let slug: &str = r;
-			rating.include.push(slug.to_string());
-		}
-
-		let mut label = FiltersDto::default();
-		for g in C::EXCLUDE_GENRES {
-			let slug: &str = g;
-			label.exclude.push(slug.to_string());
 		}
 
 		let after = if page <= 1 {
@@ -340,9 +325,6 @@ impl<C: Config> SenkuroEngine<C> {
 			search: None,
 			kind: kind.into_option(),
 			status: None,
-			label: label.into_option(),
-			format: None,
-			rating: rating.into_option(),
 		};
 		let body = serde_json::to_vec(&GqlRequest {
 			query: MANGAS_QUERY,
