@@ -6,11 +6,7 @@ use serde::Serialize;
 // public schema. Unlike Apollo persisted queries (which break when the frontend updates
 // its hash registry), these are stable as long as the GraphQL schema doesn't break.
 
-// As of late 2026 Senkuro started gating mangaTachiyomiSearch behind a Meilisearch
-// API key the public app doesn't have, so we switched to the website's own
-// Relay-paginated `mangas()` field. Same node shape, cursor-based pagination via
-// pageInfo { hasNextPage endCursor }, no auth required.
-pub const MANGAS_QUERY: &str = r#"query mangasCatalog($first: Int!, $after: String, $search: String, $type: MangaTypeFilter, $status: MangaStatusFilter) { mangas(first: $first, after: $after, search: $search, type: $type, status: $status) { edges { node { id slug originalName { lang content } titles { lang content } alternativeNames { lang content } cover { original { url } } } } pageInfo { hasNextPage endCursor } } }"#;
+pub const MANGAS_QUERY: &str = r#"query searchTachiyomiManga($query: String, $type: MangaTachiyomiSearchTypeFilter, $status: MangaTachiyomiSearchStatusFilter, $translationStatus: MangaTachiyomiSearchTranslationStatusFilter, $label: MangaTachiyomiSearchGenreFilter, $format: MangaTachiyomiSearchGenreFilter, $rating: MangaTachiyomiSearchTagFilter, $offset: Int) { mangaTachiyomiSearch(query: $query, type: $type, status: $status, translationStatus: $translationStatus, label: $label, format: $format, rating: $rating, offset: $offset) { mangas { id slug originalName { lang content } titles { lang content } alternativeNames { lang content } cover { original { url } } } } }"#;
 
 pub const DETAILS_QUERY: &str = r#"query fetchTachiyomiManga($mangaId: ID!) { mangaTachiyomiInfo(mangaId: $mangaId) { id slug originalName { lang content } titles { lang content } alternativeNames { lang content } localizations { lang description } type rating status formats labels { id rootId slug titles { lang content } } translationStatus cover { original { url } } mainStaff { roles person { name } } } }"#;
 
@@ -20,8 +16,7 @@ pub const PAGES_QUERY: &str = r#"query fetchTachiyomiChapterPages($mangaId: ID!,
 
 pub const FILTERS_QUERY: &str = r#"query fetchTachiyomiSearchFilters { mangaTachiyomiSearchFilters { labels { id rootId slug titles { lang content } } } }"#;
 
-// Page size for the Relay-paginated `mangas()` field. Anything up to 50 works.
-pub const PAGE_SIZE: i32 = 30;
+pub const PAGE_SIZE: i32 = 20;
 
 #[derive(Serialize)]
 pub struct GqlRequest<'a, V: Serialize> {
@@ -31,15 +26,22 @@ pub struct GqlRequest<'a, V: Serialize> {
 
 #[derive(Serialize)]
 pub struct MangasVariables {
-	pub first: i32,
-	#[serde(skip_serializing_if = "Option::is_none")]
-	pub after: Option<String>,
-	#[serde(skip_serializing_if = "Option::is_none")]
+	#[serde(rename = "query", skip_serializing_if = "Option::is_none")]
 	pub search: Option<String>,
 	#[serde(rename = "type", skip_serializing_if = "Option::is_none")]
 	pub kind: Option<FiltersDto>,
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub status: Option<FiltersDto>,
+	#[serde(rename = "translationStatus", skip_serializing_if = "Option::is_none")]
+	pub translation_status: Option<FiltersDto>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub label: Option<FiltersDto>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub format: Option<FiltersDto>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub rating: Option<FiltersDto>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub offset: Option<i32>,
 }
 
 #[derive(Serialize, Default, Clone)]

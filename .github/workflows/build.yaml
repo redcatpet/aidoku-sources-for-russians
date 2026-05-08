@@ -66,6 +66,7 @@ jobs:
       - name: Build source list
         run: |
           mkdir -p public
+          touch public/.nojekyll
           aidoku build sources/*/package.aix --name "Aidoku Sources for Russians"
 
       - name: Copy landing page

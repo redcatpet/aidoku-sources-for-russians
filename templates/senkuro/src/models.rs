@@ -65,34 +65,18 @@ pub struct Image {
 	pub original: Option<ImageSize>,
 }
 
-// --- search (Relay-paginated mangas() field) ---
+// --- search (mangaTachiyomiSearch field) ---
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MangasData {
-	pub mangas: Option<MangasConnection>,
+	pub manga_tachiyomi_search: Option<MangasResult>,
 }
 
 #[derive(Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct MangasConnection {
+pub struct MangasResult {
 	#[serde(default)]
-	pub edges: Vec<MangaEdge>,
-	#[serde(default)]
-	pub page_info: Option<PageInfo>,
-}
-
-#[derive(Deserialize)]
-pub struct MangaEdge {
-	pub node: SearchManga,
-}
-
-#[derive(Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct PageInfo {
-	#[serde(default)]
-	pub has_next_page: bool,
-	#[serde(default)]
-	pub end_cursor: Option<String>,
+	pub mangas: Vec<SearchManga>,
 }
 
 #[derive(Deserialize, Default)]
