@@ -16,7 +16,7 @@ pub const PAGES_QUERY: &str = r#"query fetchTachiyomiChapterPages($mangaId: ID!,
 
 pub const FILTERS_QUERY: &str = r#"query fetchTachiyomiSearchFilters { mangaTachiyomiSearchFilters { labels { id rootId slug titles { lang content } } } }"#;
 
-pub const PAGE_SIZE: i32 = 20;
+pub const PAGE_SIZE: i32 = 10;
 
 #[derive(Serialize)]
 pub struct GqlRequest<'a, V: Serialize> {

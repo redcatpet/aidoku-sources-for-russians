@@ -33,8 +33,8 @@ https://raw.githubusercontent.com/redcatpet/aidoku-sources-for-russians/gh-pages
 | Источник | Сайт | Версия | Статус | Содержимое |
 | --- | --- | :---: | --- | --- |
 | [AllHentai](sources/ru.allhentai/) | https://allhen.online | v6 | beta, web-login | манга 18+ |
-| [Senkuro](sources/ru.senkuro/) | https://senkuro.com | v8 | работает | манга, манхва, маньхуа, комиксы |
-| [Senkognito](sources/ru.senkognito/) | https://senkognito.com | v7 | работает | 18+ каталог Senkuro |
+| [Senkuro](sources/ru.senkuro/) | https://senkuro.com | v9 | работает | манга, манхва, маньхуа, комиксы |
+| [Senkognito](sources/ru.senkognito/) | https://senkognito.com | v8 | работает | 18+ каталог Senkuro |
 | [ReadManga](sources/ru.readmanga/) | https://readmanga.live | v5 | beta, web-login | манга |
 | [MangaBuff](sources/ru.mangabuff/) | https://mangabuff.ru | v1 | beta | манга, манхва |
 | [Ranobes](sources/ru.ranobes/) | https://ranobes.com | v7 | beta | ранобэ |
@@ -48,6 +48,7 @@ https://raw.githubusercontent.com/redcatpet/aidoku-sources-for-russians/gh-pages
 - У Ранобэ.рф исправлена битая кодировка описаний и текста глав.
 - У Ранобэ.рф добавлен повтор сетевого запроса и fallback-каталог через главную страницу, если `/v3/book` обрывается.
 - У Ranobes первая страница каталога открывается без редиректа, а карточки разбираются более устойчиво при изменениях HTML-разметки.
+- У Senkuro исправлена пагинация разделов: API отдаёт по 10 элементов, и Aidoku теперь догружает следующие страницы.
 - Версии Senkuro и Senkognito увеличены, чтобы Aidoku предложил обновление после публикации списка.
 - README и ссылки на список источников обновлены под репозиторий `redcatpet/aidoku-sources-for-russians`.
 
