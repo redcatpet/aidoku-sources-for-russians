@@ -44,7 +44,7 @@ fn fetch_text(url: &str) -> Result<Vec<u8>> {
 			Err(e) if attempt < 3 => {
 				println!("[ranoberf] request attempt {attempt} failed for {url}: {e:?}");
 			}
-			Err(e) => return Err(e),
+			Err(e) => return Err(error!("Ранобэ.рф request failed: {e:?}")),
 		}
 	}
 	let response = response.ok_or_else(|| error!("Ранобэ.рф request failed"))?;
