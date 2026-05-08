@@ -56,19 +56,28 @@ fn fetch_html(url: &str) -> Result<Document> {
 fn parse_listing(doc: &Document) -> MangaPageResult {
 	// Tile element is `<article class="block story shortstory ...">`. Use the
 	// tag-agnostic class selector so we also handle any future <div>-based theme.
-	let entries = doc
-		.select(".block.story.shortstory")
-		.map(|list| {
-			list.into_iter()
-				.filter_map(|el| parser::parse_tile(&el))
-				.collect::<Vec<_>>()
-		})
-		.unwrap_or_default();
+	let mut entries = parse_listing_with_selector(doc, ".block.story.shortstory");
+	if entries.is_empty() {
+		entries = parse_listing_with_selector(doc, ".shortstory");
+	}
+	if entries.is_empty() {
+		entries = parse_listing_with_selector(doc, "article");
+	}
 	let has_next_page = doc.select_first(".page_next a, a.page_next").is_some();
 	MangaPageResult {
 		entries,
 		has_next_page,
 	}
+}
+
+fn parse_listing_with_selector(doc: &Document, selector: &str) -> Vec<Manga> {
+	doc.select(selector)
+		.map(|list| {
+			list.into_iter()
+				.filter_map(|el| parser::parse_tile(&el))
+				.collect::<Vec<_>>()
+		})
+		.unwrap_or_default()
 }
 
 struct Ranobes;

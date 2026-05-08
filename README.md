@@ -32,18 +32,21 @@ https://raw.githubusercontent.com/redcatpet/aidoku-sources-for-russians/gh-pages
 
 | Источник | Сайт | Версия | Статус | Содержимое |
 | --- | --- | :---: | --- | --- |
+| [AllHentai](sources/ru.allhentai/) | https://allhen.online | v6 | beta, web-login | манга 18+ |
 | [Senkuro](sources/ru.senkuro/) | https://senkuro.com | v8 | работает | манга, манхва, маньхуа, комиксы |
 | [Senkognito](sources/ru.senkognito/) | https://senkognito.com | v7 | работает | 18+ каталог Senkuro |
 | [ReadManga](sources/ru.readmanga/) | https://readmanga.live | v5 | beta, web-login | манга |
 | [MangaBuff](sources/ru.mangabuff/) | https://mangabuff.ru | v1 | beta | манга, манхва |
-| [Ranobes](sources/ru.ranobes/) | https://ranobes.com | v5 | beta | ранобэ |
+| [Ranobes](sources/ru.ranobes/) | https://ranobes.com | v6 | beta | ранобэ |
 | [RanobeHub](sources/ru.ranobehub/) | https://ranobehub.org | v2 | beta | ранобэ |
-| [Ранобэ.рф](sources/ru.ranoberf/) | https://ранобэ.рф | v2 | beta | ранобэ |
+| [Ранобэ.рф](sources/ru.ranoberf/) | https://ранобэ.рф | v3 | beta | ранобэ |
 
 ## Что исправлено в этом форке
 
 - Senkuro снова использует актуальный GraphQL-запрос `mangaTachiyomiSearch` и типы фильтров `MangaTachiyomiSearch*Filter`.
 - Фильтры типа, формата, статуса, статуса перевода, жанров и возрастного рейтинга снова передаются в API.
+- У Ранобэ.рф исправлена битая кодировка описаний и текста глав.
+- У Ranobes каталог разбирается более устойчиво при изменениях HTML-разметки.
 - Версии Senkuro и Senkognito увеличены, чтобы Aidoku предложил обновление после публикации списка.
 - README и ссылки на список источников обновлены под репозиторий `redcatpet/aidoku-sources-for-russians`.
 
@@ -60,7 +63,7 @@ cd sources/ru.senkuro
 aidoku package
 ```
 
-Публикация автоматическая: при пуше в `main` GitHub Actions собирает `.aix` пакеты, создаёт `index.min.json` и выкладывает результат в ветку `gh-pages`.
+Публикация автоматическая: при пуше изменений в `sources/**`, `templates/**`, `public-template/**` или workflow GitHub Actions собирает `.aix` пакеты, создаёт `index.min.json` и выкладывает результат в ветку `gh-pages`.
 
 ## Лицензия
 
