@@ -6,7 +6,7 @@
 
 DLE-сайт, API нет, всё парсится из HTML. Это **первый текстовый (не картиночный) источник** в репозитории — главы возвращаются как `PageContent::Text(markdown)` и Aidoku рендерит их в вертикальном тексто-ридере (`Viewer::Vertical`).
 
-- **Каталог**: `GET /ranobe/page/N/` → 10 тайлов на страницу
+- **Каталог**: `GET /ranobe/` для первой страницы, `GET /ranobe/page/N/` для следующих → 10 тайлов на страницу
 - **Поиск**: `GET /index.php?do=search&subaction=search&story=…` (DLE-стандарт)
 - **Карточка**: `GET /ranobe/{id}-{slug}.html` — заголовок из `h1.title`, описание из `meta[og:description]`, обложка из `meta[og:image]`
 - **Список глав**: `GET /chapters/{slug}/page/N/` (slug — другой, ранобэс обрезает его), 25 глав на страницу. Источник идёт по страницам до `CHAPTER_LIST_PAGES_CAP=10` (≈250 глав максимум), чтобы не провоцировать DDoS-Guard.

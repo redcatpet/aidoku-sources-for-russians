@@ -13,6 +13,13 @@ pub struct CatalogEnvelope {
 	pub items: Vec<CatalogItem>,
 }
 
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct HomePageProps {
+	#[serde(default)]
+	pub total_data: Option<CatalogEnvelope>,
+}
+
 #[derive(Deserialize)]
 pub struct CatalogItem {
 	pub id: i64,
@@ -28,6 +35,8 @@ pub struct CatalogItem {
 	pub likes: Option<i64>,
 	#[serde(default)]
 	pub dislikes: Option<i64>,
+	#[serde(default)]
+	pub vertical_image: Option<ImageRef>,
 }
 
 impl CatalogItem {
@@ -44,6 +53,10 @@ impl CatalogItem {
 		Manga {
 			key: self.slug.clone(),
 			title: self.title,
+			cover: self
+				.vertical_image
+				.and_then(|image| image.url)
+				.map(|url| absolutize(&url)),
 			url: Some(absolutize(&url)),
 			status: parse_status(self.status.as_deref()),
 			..Default::default()

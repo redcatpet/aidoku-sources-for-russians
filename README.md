@@ -37,16 +37,17 @@ https://raw.githubusercontent.com/redcatpet/aidoku-sources-for-russians/gh-pages
 | [Senkognito](sources/ru.senkognito/) | https://senkognito.com | v7 | работает | 18+ каталог Senkuro |
 | [ReadManga](sources/ru.readmanga/) | https://readmanga.live | v5 | beta, web-login | манга |
 | [MangaBuff](sources/ru.mangabuff/) | https://mangabuff.ru | v1 | beta | манга, манхва |
-| [Ranobes](sources/ru.ranobes/) | https://ranobes.com | v6 | beta | ранобэ |
+| [Ranobes](sources/ru.ranobes/) | https://ranobes.com | v7 | beta | ранобэ |
 | [RanobeHub](sources/ru.ranobehub/) | https://ranobehub.org | v2 | beta | ранобэ |
-| [Ранобэ.рф](sources/ru.ranoberf/) | https://ранобэ.рф | v3 | beta | ранобэ |
+| [Ранобэ.рф](sources/ru.ranoberf/) | https://ранобэ.рф | v4 | beta | ранобэ |
 
 ## Что исправлено в этом форке
 
 - Senkuro снова использует актуальный GraphQL-запрос `mangaTachiyomiSearch` и типы фильтров `MangaTachiyomiSearch*Filter`.
 - Фильтры типа, формата, статуса, статуса перевода, жанров и возрастного рейтинга снова передаются в API.
 - У Ранобэ.рф исправлена битая кодировка описаний и текста глав.
-- У Ranobes каталог разбирается более устойчиво при изменениях HTML-разметки.
+- У Ранобэ.рф добавлен повтор сетевого запроса и fallback-каталог через главную страницу, если `/v3/book` обрывается.
+- У Ranobes первая страница каталога открывается без редиректа, а карточки разбираются более устойчиво при изменениях HTML-разметки.
 - Версии Senkuro и Senkognito увеличены, чтобы Aidoku предложил обновление после публикации списка.
 - README и ссылки на список источников обновлены под репозиторий `redcatpet/aidoku-sources-for-russians`.
 
