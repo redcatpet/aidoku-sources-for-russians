@@ -352,6 +352,20 @@ const TYPE_SECTIONS: &[(&str, &str, Option<&str>)] = &[
 	("comics", "Комиксы", Some("COMICS")),
 ];
 
+const HOME_FEATURED_COUNT: usize = 3;
+
+fn section_subtitle(id: &str) -> Option<String> {
+	match id {
+		"popular" => Some("За всё время".to_string()),
+		"more_popular" => Some("Продолжение подборки".to_string()),
+		"manga" => Some("Японские тайтлы".to_string()),
+		"manhwa" => Some("Корейские вебтуны".to_string()),
+		"manhua" => Some("Китайские тайтлы".to_string()),
+		"comics" => Some("Комиксы и OEL".to_string()),
+		_ => None,
+	}
+}
+
 impl<C: Config> ListingProvider for SenkuroEngine<C> {
 	fn get_manga_list(&self, listing: Listing, page: i32) -> Result<MangaPageResult> {
 		let id = listing.id.clone();
@@ -370,15 +384,42 @@ impl<C: Config> ListingProvider for SenkuroEngine<C> {
 impl<C: Config> Home for SenkuroEngine<C> {
 	fn get_home(&self) -> Result<HomeLayout> {
 		let popular = Self::fetch_catalog("popular", None, 1)?.entries;
-		let mut components: Vec<HomeComponent> = Vec::with_capacity(1 + TYPE_SECTIONS.len());
+		let featured: Vec<Manga> = popular
+			.iter()
+			.take(HOME_FEATURED_COUNT)
+			.cloned()
+			.map(|m| self.get_manga_update(m.clone(), true, false).unwrap_or(m))
+			.collect();
+		let more_popular: Vec<Link> = popular
+			.iter()
+			.skip(HOME_FEATURED_COUNT)
+			.cloned()
+			.map(Link::from)
+			.collect();
+
+		let mut components: Vec<HomeComponent> = Vec::with_capacity(2 + TYPE_SECTIONS.len());
 		components.push(HomeComponent {
 			title: Some("Популярное".to_string()),
-			subtitle: None,
+			subtitle: section_subtitle("popular"),
 			value: HomeComponentValue::BigScroller {
-				entries: popular,
+				entries: featured,
 				auto_scroll_interval: Some(8.0),
 			},
 		});
+		if !more_popular.is_empty() {
+			components.push(HomeComponent {
+				title: Some("Ещё популярное".to_string()),
+				subtitle: section_subtitle("more_popular"),
+				value: HomeComponentValue::Scroller {
+					entries: more_popular,
+					listing: Some(Listing {
+						id: "popular".to_string(),
+						name: "Популярное".to_string(),
+						kind: ListingKind::Default,
+					}),
+				},
+			});
+		}
 		for (lid, title, type_slug) in TYPE_SECTIONS {
 			let entries = Self::fetch_catalog(*lid, *type_slug, 1)
 				.map(|r| r.entries)
@@ -389,7 +430,7 @@ impl<C: Config> Home for SenkuroEngine<C> {
 			let links: Vec<Link> = entries.into_iter().map(Link::from).collect();
 			components.push(HomeComponent {
 				title: Some((*title).to_string()),
-				subtitle: None,
+				subtitle: section_subtitle(lid),
 				value: HomeComponentValue::Scroller {
 					entries: links,
 					listing: Some(Listing {
