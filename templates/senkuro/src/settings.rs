@@ -4,7 +4,7 @@ use alloc::string::{String, ToString};
 const API_DOMAIN_KEY: &str = "apiDomain";
 const ENGLISH_TITLES_KEY: &str = "englishTitles";
 
-pub const DEFAULT_API_DOMAIN: &str = "https://api.senkuro.me";
+pub const DEFAULT_API_DOMAIN: &str = "https://api.senkuro.com";
 
 pub fn api_url() -> String {
 	let mut base =

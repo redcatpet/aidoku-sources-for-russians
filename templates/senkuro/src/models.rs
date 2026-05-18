@@ -63,6 +63,8 @@ pub struct ImageSize {
 pub struct Image {
 	#[serde(default)]
 	pub original: Option<ImageSize>,
+	#[serde(default)]
+	pub preview: Option<ImageSize>,
 }
 
 // --- search (mangaTachiyomiSearch field) ---
@@ -71,6 +73,30 @@ pub struct Image {
 #[serde(rename_all = "camelCase")]
 pub struct MangasData {
 	pub manga_tachiyomi_search: Option<MangasResult>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct PopularByPeriodData {
+	#[serde(default)]
+	pub manga_popular_by_period: Vec<SearchManga>,
+}
+
+#[derive(Deserialize, Default)]
+pub struct MangaConnectionData {
+	#[serde(default)]
+	pub mangas: Option<MangaConnection>,
+}
+
+#[derive(Deserialize, Default)]
+pub struct MangaConnection {
+	#[serde(default)]
+	pub edges: Vec<MangaEdge>,
+}
+
+#[derive(Deserialize, Default)]
+pub struct MangaEdge {
+	pub node: SearchManga,
 }
 
 #[derive(Deserialize, Default)]
@@ -89,7 +115,18 @@ pub struct SearchManga {
 	#[serde(default)]
 	pub titles: Vec<I18nString>,
 	#[serde(default)]
+	#[serde(rename = "type")]
+	pub kind: Option<String>,
+	#[serde(default)]
+	pub rating: Option<String>,
+	#[serde(default)]
+	pub formats: Option<Vec<String>>,
+	#[serde(default)]
+	pub score: Option<f32>,
+	#[serde(default)]
 	pub cover: Option<Image>,
+	#[serde(default)]
+	pub last_chapters: Vec<ChapterDto>,
 }
 
 impl SearchManga {
@@ -99,12 +136,30 @@ impl SearchManga {
 			self.original_name.as_ref().map(|t| t.content.as_str()),
 			&self.slug,
 		);
-		let cover = self.cover.and_then(|c| c.original.map(|x| x.url));
+		let cover = self
+			.cover
+			.and_then(|c| c.preview.or(c.original).map(|x| x.url));
+		let mut tags = Vec::new();
+		if let Some(kind) = self.kind.as_deref().and_then(display_manga_type) {
+			tags.push(kind.to_string());
+		}
+		if let Some(formats) = &self.formats {
+			for f in formats.iter().filter_map(|f| display_manga_format(f)) {
+				if !tags.iter().any(|t| t.as_str() == f) {
+					tags.push(f.to_string());
+				}
+			}
+		}
+		let description = update_description(&self.last_chapters);
 		Manga {
 			key: build_manga_key(&self.id, &self.slug),
 			title,
 			cover,
 			url: Some(alloc::format!("{}/manga/{}", base_url, self.slug)),
+			description,
+			tags: if tags.is_empty() { None } else { Some(tags) },
+			content_rating: parse_rating(self.rating.as_deref()),
+			viewer: parse_viewer(self.kind.as_deref()),
 			..Default::default()
 		}
 	}
@@ -179,7 +234,9 @@ impl MangaInfo {
 			self.original_name.as_ref().map(|t| t.content.as_str()),
 			&self.slug,
 		);
-		let cover = self.cover.and_then(|c| c.original.map(|x| x.url));
+		let cover = self
+			.cover
+			.and_then(|c| c.preview.or(c.original).map(|x| x.url));
 
 		let mut authors = Vec::new();
 		let mut artists = Vec::new();
@@ -393,6 +450,60 @@ fn pick_title(titles: &[I18nString], original: Option<&str>, fallback: &str) -> 
 	original
 		.map(|s| s.to_string())
 		.unwrap_or_else(|| fallback.to_string())
+}
+
+fn update_description(chapters: &[ChapterDto]) -> Option<String> {
+	let chapter = chapters.first()?;
+	let mut out = chapter
+		.number
+		.as_ref()
+		.map(|number| alloc::format!("Глава {number}"))
+		.unwrap_or_else(|| "Новая глава".to_string());
+	if let Some(name) = chapter.name.as_ref().filter(|s| !s.is_empty()) {
+		out.push_str(" - ");
+		out.push_str(name);
+	}
+	if let Some(date) = chapter.created_at.as_deref().and_then(format_iso_date) {
+		out.push_str(" • ");
+		out.push_str(&date);
+	}
+	Some(out)
+}
+
+fn format_iso_date(s: &str) -> Option<String> {
+	if s.len() < 10 {
+		return None;
+	}
+	let year = s.get(0..4)?;
+	let month = s.get(5..7)?;
+	let day = s.get(8..10)?;
+	Some(alloc::format!("{day}.{month}.{year}"))
+}
+
+fn display_manga_type(value: &str) -> Option<&'static str> {
+	match value {
+		"MANGA" => Some("Манга"),
+		"MANHWA" => Some("Манхва"),
+		"MANHUA" => Some("Маньхуа"),
+		"COMICS" => Some("Комикс"),
+		"OEL_MANGA" => Some("OEL-манга"),
+		"RU_MANGA" => Some("РуМанга"),
+		_ => None,
+	}
+}
+
+fn display_manga_format(value: &str) -> Option<&'static str> {
+	match value {
+		"IN_COLOR" => Some("В цвете"),
+		"WEB" => Some("WEB"),
+		"WEBTOON" => Some("WEBTOON"),
+		"DIGEST" => Some("Сборник"),
+		"DOUJINSHI" => Some("Додзинси"),
+		"SINGLE" => Some("Сингл"),
+		"YONKOMA" => Some("Ёнкома"),
+		"SHORT" => Some("Короткое"),
+		_ => None,
+	}
 }
 
 pub fn pick_label_title(titles: &[I18nString]) -> Option<String> {

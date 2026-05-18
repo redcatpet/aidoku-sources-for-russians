@@ -22,11 +22,13 @@ use serde::de::DeserializeOwned;
 
 use graphql::{
 	CHAPTERS_QUERY, DETAILS_QUERY, DetailsVariables, FILTERS_QUERY, FiltersDto, GqlRequest,
-	MANGAS_QUERY, MangasVariables, PAGE_SIZE, PAGES_QUERY, PagesVariables,
+	LATEST_TITLES_QUERY, LATEST_UPDATES_QUERY, MANGAS_QUERY, MangaConnectionVariables,
+	MangasVariables, PAGE_SIZE, PAGES_QUERY, POPULAR_BY_PERIOD_QUERY, PagesVariables,
+	PeriodVariables, TOP_BY_TYPE_QUERY,
 };
 use models::{
-	ChaptersData, DetailsData, FiltersResponse, GqlResponse, MangasData, PagesData,
-	build_manga_key, split_chapter_key, split_manga_key,
+	ChaptersData, DetailsData, FiltersResponse, GqlResponse, MangaConnectionData, MangasData,
+	PagesData, PopularByPeriodData, build_manga_key, split_chapter_key, split_manga_key,
 };
 
 /// Per-source compile-time configuration consumed by [`SenkuroEngine`].
@@ -326,63 +328,69 @@ impl<C: Config> SenkuroEngine<C> {
 			has_next_page,
 		})
 	}
-}
 
-fn default_label<C: Config>() -> Option<FiltersDto> {
-	let mut label = FiltersDto::default();
-	for g in C::EXCLUDE_GENRES {
-		label.exclude.push((*g).to_string());
+	fn fetch_popular_period(period: &'static str) -> Result<Vec<Manga>> {
+		let body = serde_json::to_vec(&GqlRequest {
+			query: POPULAR_BY_PERIOD_QUERY,
+			variables: PeriodVariables { period },
+		})
+		.map_err(|e| error!("encode popular period: {e}"))?;
+		let data: PopularByPeriodData = post_graphql("fetchMangaPopularByPeriod", &body)?;
+		Ok(data
+			.manga_popular_by_period
+			.into_iter()
+			.map(|m| m.into_manga(C::BASE_URL))
+			.collect())
 	}
-	label.into_option()
-}
 
-fn default_rating<C: Config>() -> Option<FiltersDto> {
-	let mut rating = FiltersDto::default();
-	for r in C::DEFAULT_RATING_INCLUDE {
-		rating.include.push((*r).to_string());
-	}
-	rating.into_option()
-}
-
-const TYPE_SECTIONS: &[(&str, &str, Option<&str>)] = &[
-	// (listing_id, display_title, optional type-filter slug)
-	("manga", "Манга", Some("MANGA")),
-	("manhwa", "Манхва", Some("MANHWA")),
-	("manhua", "Маньхуа", Some("MANHUA")),
-	("comics", "Комиксы", Some("COMICS")),
-];
-
-const HOME_FEATURED_COUNT: usize = 3;
-
-fn section_subtitle(id: &str) -> Option<String> {
-	match id {
-		"popular" => Some("За всё время".to_string()),
-		"more_popular" => Some("Продолжение подборки".to_string()),
-		"manga" => Some("Японские тайтлы".to_string()),
-		"manhwa" => Some("Корейские вебтуны".to_string()),
-		"manhua" => Some("Китайские тайтлы".to_string()),
-		"comics" => Some("Комиксы и OEL".to_string()),
-		_ => None,
-	}
-}
-
-impl<C: Config> ListingProvider for SenkuroEngine<C> {
-	fn get_manga_list(&self, listing: Listing, page: i32) -> Result<MangaPageResult> {
-		let id = listing.id.clone();
-		let id_ref = id.as_str();
-		if id_ref == "popular" || id_ref.is_empty() {
-			return Self::fetch_catalog("popular", None, page);
+	fn fetch_manga_connection(
+		query: &'static str,
+		operation: &str,
+		type_slug: Option<&'static str>,
+		first: i32,
+	) -> Result<Vec<Manga>> {
+		let mut kind = FiltersDto::default();
+		if let Some(t) = type_slug {
+			kind.include.push(t.to_string());
 		}
-		let type_slug = TYPE_SECTIONS
-			.iter()
-			.find(|(lid, _, _)| *lid == id_ref)
-			.and_then(|(_, _, slug)| *slug);
-		Self::fetch_catalog(id_ref, type_slug, page)
+		let body = serde_json::to_vec(&GqlRequest {
+			query,
+			variables: MangaConnectionVariables {
+				first,
+				kind: kind.into_option(),
+				label: default_label::<C>(),
+			},
+		})
+		.map_err(|e| error!("encode {operation}: {e}"))?;
+		let data: MangaConnectionData = post_graphql(operation, &body)?;
+		Ok(data
+			.mangas
+			.unwrap_or_default()
+			.edges
+			.into_iter()
+			.map(|edge| edge.node.into_manga(C::BASE_URL))
+			.collect())
 	}
-}
 
-impl<C: Config> Home for SenkuroEngine<C> {
-	fn get_home(&self) -> Result<HomeLayout> {
+	fn fetch_static_listing(
+		query: &'static str,
+		operation: &str,
+		type_slug: Option<&'static str>,
+		page: i32,
+	) -> Result<MangaPageResult> {
+		if page > 1 {
+			return Ok(MangaPageResult {
+				entries: Vec::new(),
+				has_next_page: false,
+			});
+		}
+		Ok(MangaPageResult {
+			entries: Self::fetch_manga_connection(query, operation, type_slug, 24)?,
+			has_next_page: false,
+		})
+	}
+
+	fn get_catalog_home(&self) -> Result<HomeLayout> {
 		let popular = Self::fetch_catalog("popular", None, 1)?.entries;
 		let featured: Vec<Manga> = popular
 			.iter()
@@ -400,7 +408,7 @@ impl<C: Config> Home for SenkuroEngine<C> {
 		let mut components: Vec<HomeComponent> = Vec::with_capacity(2 + TYPE_SECTIONS.len());
 		components.push(HomeComponent {
 			title: Some("Популярное".to_string()),
-			subtitle: section_subtitle("popular"),
+			subtitle: Some("За всё время".to_string()),
 			value: HomeComponentValue::BigScroller {
 				entries: featured,
 				auto_scroll_interval: Some(8.0),
@@ -409,7 +417,7 @@ impl<C: Config> Home for SenkuroEngine<C> {
 		if !more_popular.is_empty() {
 			components.push(HomeComponent {
 				title: Some("Ещё популярное".to_string()),
-				subtitle: section_subtitle("more_popular"),
+				subtitle: Some("Продолжение подборки".to_string()),
 				value: HomeComponentValue::Scroller {
 					entries: more_popular,
 					listing: Some(Listing {
@@ -443,6 +451,254 @@ impl<C: Config> Home for SenkuroEngine<C> {
 		}
 		Ok(HomeLayout { components })
 	}
+}
+
+fn default_label<C: Config>() -> Option<FiltersDto> {
+	let mut label = FiltersDto::default();
+	for g in C::EXCLUDE_GENRES {
+		label.exclude.push((*g).to_string());
+	}
+	label.into_option()
+}
+
+fn default_rating<C: Config>() -> Option<FiltersDto> {
+	let mut rating = FiltersDto::default();
+	for r in C::DEFAULT_RATING_INCLUDE {
+		rating.include.push((*r).to_string());
+	}
+	rating.into_option()
+}
+
+const TYPE_SECTIONS: &[(&str, &str, Option<&str>)] = &[
+	// (listing_id, display_title, optional type-filter slug)
+	("manga", "Манга", Some("MANGA")),
+	("manhwa", "Манхва", Some("MANHWA")),
+	("manhua", "Маньхуа", Some("MANHUA")),
+	("comics", "Комиксы", Some("COMICS")),
+];
+
+const HOME_FEATURED_COUNT: usize = 3;
+const HOME_SCROLLER_COUNT: i32 = 12;
+
+fn section_subtitle(id: &str) -> Option<String> {
+	match id {
+		"popular" => Some("За день".to_string()),
+		"top_week" => Some("За неделю".to_string()),
+		"top_month" => Some("За месяц".to_string()),
+		"latest_updates" => Some("Свежие главы".to_string()),
+		"latest_titles" => Some("Новые тайтлы".to_string()),
+		"top_manhwa" => Some("По оценкам читателей".to_string()),
+		"manga" => Some("Японские тайтлы".to_string()),
+		"manhwa" => Some("Корейские вебтуны".to_string()),
+		"manhua" => Some("Китайские тайтлы".to_string()),
+		"comics" => Some("Комиксы и OEL".to_string()),
+		_ => None,
+	}
+}
+
+impl<C: Config> ListingProvider for SenkuroEngine<C> {
+	fn get_manga_list(&self, listing: Listing, page: i32) -> Result<MangaPageResult> {
+		let id = listing.id.clone();
+		let id_ref = id.as_str();
+		if id_ref == "popular" || id_ref.is_empty() {
+			if !C::DEFAULT_RATING_INCLUDE.is_empty() {
+				return Self::fetch_catalog("popular", None, page);
+			}
+			if page > 1 {
+				return Ok(MangaPageResult {
+					entries: Vec::new(),
+					has_next_page: false,
+				});
+			}
+			return Ok(MangaPageResult {
+				entries: Self::fetch_popular_period("DAY")?,
+				has_next_page: false,
+			});
+		}
+		if C::DEFAULT_RATING_INCLUDE.is_empty() {
+			match id_ref {
+				"top_week" => {
+					return Ok(MangaPageResult {
+						entries: if page == 1 {
+							Self::fetch_popular_period("WEEK")?
+						} else {
+							Vec::new()
+						},
+						has_next_page: false,
+					});
+				}
+				"top_month" => {
+					return Ok(MangaPageResult {
+						entries: if page == 1 {
+							Self::fetch_popular_period("MONTH")?
+						} else {
+							Vec::new()
+						},
+						has_next_page: false,
+					});
+				}
+				"latest_updates" => {
+					return Self::fetch_static_listing(
+						LATEST_UPDATES_QUERY,
+						"fetchLatestMangaUpdates",
+						None,
+						page,
+					);
+				}
+				"latest_titles" => {
+					return Self::fetch_static_listing(
+						LATEST_TITLES_QUERY,
+						"fetchLatestMangaTitles",
+						None,
+						page,
+					);
+				}
+				"top_manhwa" => {
+					return Self::fetch_static_listing(
+						TOP_BY_TYPE_QUERY,
+						"fetchTopManhwa",
+						Some("MANHWA"),
+						page,
+					);
+				}
+				_ => {}
+			}
+		}
+		let type_slug = TYPE_SECTIONS
+			.iter()
+			.find(|(lid, _, _)| *lid == id_ref)
+			.and_then(|(_, _, slug)| *slug);
+		Self::fetch_catalog(id_ref, type_slug, page)
+	}
+}
+
+impl<C: Config> Home for SenkuroEngine<C> {
+	fn get_home(&self) -> Result<HomeLayout> {
+		if !C::DEFAULT_RATING_INCLUDE.is_empty() {
+			return self.get_catalog_home();
+		}
+		let popular = Self::fetch_popular_period("DAY")
+			.or_else(|_| Self::fetch_catalog("popular", None, 1).map(|r| r.entries))?;
+		let featured: Vec<Manga> = popular
+			.iter()
+			.take(HOME_FEATURED_COUNT)
+			.cloned()
+			.map(|m| self.get_manga_update(m.clone(), true, false).unwrap_or(m))
+			.collect();
+		let more_popular: Vec<Link> = popular
+			.iter()
+			.skip(HOME_FEATURED_COUNT)
+			.cloned()
+			.map(Link::from)
+			.collect();
+		let weekly = Self::fetch_popular_period("WEEK").unwrap_or_default();
+		let monthly = Self::fetch_popular_period("MONTH").unwrap_or_default();
+		let latest_updates = Self::fetch_manga_connection(
+			LATEST_UPDATES_QUERY,
+			"fetchLatestMangaUpdates",
+			None,
+			HOME_SCROLLER_COUNT,
+		)
+		.unwrap_or_default();
+		let latest_titles = Self::fetch_manga_connection(
+			LATEST_TITLES_QUERY,
+			"fetchLatestMangaTitles",
+			None,
+			HOME_SCROLLER_COUNT,
+		)
+		.unwrap_or_default();
+		let top_manhwa = Self::fetch_manga_connection(
+			TOP_BY_TYPE_QUERY,
+			"fetchTopManhwa",
+			Some("MANHWA"),
+			HOME_SCROLLER_COUNT,
+		)
+		.unwrap_or_default();
+
+		let mut components: Vec<HomeComponent> = Vec::with_capacity(6 + TYPE_SECTIONS.len());
+		components.push(HomeComponent {
+			title: Some("Самое читаемое".to_string()),
+			subtitle: section_subtitle("popular"),
+			value: HomeComponentValue::BigScroller {
+				entries: featured,
+				auto_scroll_interval: Some(8.0),
+			},
+		});
+		if !more_popular.is_empty() {
+			components.push(HomeComponent {
+				title: Some("Ещё за день".to_string()),
+				subtitle: section_subtitle("popular"),
+				value: HomeComponentValue::Scroller {
+					entries: more_popular,
+					listing: Some(Listing {
+						id: "popular".to_string(),
+						name: "Самое читаемое".to_string(),
+						kind: ListingKind::Default,
+					}),
+				},
+			});
+		}
+		push_scroller(&mut components, "top_week", "Читают за неделю", weekly);
+		push_scroller(&mut components, "top_month", "Читают за месяц", monthly);
+		push_scroller(
+			&mut components,
+			"latest_updates",
+			"Последние обновления",
+			latest_updates,
+		);
+		push_scroller(
+			&mut components,
+			"latest_titles",
+			"Последние манги",
+			latest_titles,
+		);
+		push_scroller(&mut components, "top_manhwa", "Топ манхв", top_manhwa);
+		for (lid, title, type_slug) in TYPE_SECTIONS {
+			let entries = Self::fetch_catalog(*lid, *type_slug, 1)
+				.map(|r| r.entries)
+				.unwrap_or_default();
+			if entries.is_empty() {
+				continue;
+			}
+			let links: Vec<Link> = entries.into_iter().map(Link::from).collect();
+			components.push(HomeComponent {
+				title: Some((*title).to_string()),
+				subtitle: section_subtitle(lid),
+				value: HomeComponentValue::Scroller {
+					entries: links,
+					listing: Some(Listing {
+						id: (*lid).to_string(),
+						name: (*title).to_string(),
+						kind: ListingKind::Default,
+					}),
+				},
+			});
+		}
+		Ok(HomeLayout { components })
+	}
+}
+
+fn push_scroller(
+	components: &mut Vec<HomeComponent>,
+	id: &'static str,
+	title: &'static str,
+	entries: Vec<Manga>,
+) {
+	if entries.is_empty() {
+		return;
+	}
+	components.push(HomeComponent {
+		title: Some(title.to_string()),
+		subtitle: section_subtitle(id),
+		value: HomeComponentValue::Scroller {
+			entries: entries.into_iter().map(Link::from).collect(),
+			listing: Some(Listing {
+				id: id.to_string(),
+				name: title.to_string(),
+				kind: ListingKind::Default,
+			}),
+		},
+	});
 }
 
 impl<C: Config> DynamicFilters for SenkuroEngine<C> {

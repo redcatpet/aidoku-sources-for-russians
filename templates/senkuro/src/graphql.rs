@@ -6,9 +6,17 @@ use serde::Serialize;
 // public schema. Unlike Apollo persisted queries (which break when the frontend updates
 // its hash registry), these are stable as long as the GraphQL schema doesn't break.
 
-pub const MANGAS_QUERY: &str = r#"query searchTachiyomiManga($query: String, $type: MangaTachiyomiSearchTypeFilter, $status: MangaTachiyomiSearchStatusFilter, $translationStatus: MangaTachiyomiSearchTranslationStatusFilter, $label: MangaTachiyomiSearchGenreFilter, $format: MangaTachiyomiSearchGenreFilter, $rating: MangaTachiyomiSearchTagFilter, $offset: Int) { mangaTachiyomiSearch(query: $query, type: $type, status: $status, translationStatus: $translationStatus, label: $label, format: $format, rating: $rating, offset: $offset) { mangas { id slug originalName { lang content } titles { lang content } alternativeNames { lang content } cover { original { url } } } } }"#;
+pub const MANGAS_QUERY: &str = r#"query searchTachiyomiManga($query: String, $type: MangaTachiyomiSearchTypeFilter, $status: MangaTachiyomiSearchStatusFilter, $translationStatus: MangaTachiyomiSearchTranslationStatusFilter, $label: MangaTachiyomiSearchGenreFilter, $format: MangaTachiyomiSearchGenreFilter, $rating: MangaTachiyomiSearchTagFilter, $offset: Int) { mangaTachiyomiSearch(query: $query, type: $type, status: $status, translationStatus: $translationStatus, label: $label, format: $format, rating: $rating, offset: $offset) { mangas { id slug originalName { lang content } titles { lang content } alternativeNames { lang content } cover { original { url } preview: resize(width: 350, height: 500) { url } } } } }"#;
 
-pub const DETAILS_QUERY: &str = r#"query fetchTachiyomiManga($mangaId: ID!) { mangaTachiyomiInfo(mangaId: $mangaId) { id slug originalName { lang content } titles { lang content } alternativeNames { lang content } localizations { lang description } type rating status formats labels { id rootId slug titles { lang content } } translationStatus cover { original { url } } mainStaff { roles person { name } } } }"#;
+pub const DETAILS_QUERY: &str = r#"query fetchTachiyomiManga($mangaId: ID!) { mangaTachiyomiInfo(mangaId: $mangaId) { id slug originalName { lang content } titles { lang content } alternativeNames { lang content } localizations { lang description } type rating status formats labels { id rootId slug titles { lang content } } translationStatus cover { original { url } preview: resize(width: 350, height: 500) { url } } mainStaff { roles person { name } } } }"#;
+
+pub const POPULAR_BY_PERIOD_QUERY: &str = r#"query fetchMangaPopularByPeriod($period: MangaPopularPeriod!) { mangaPopularByPeriod(period: $period) { id slug originalName { lang content } titles { lang content } alternativeNames { lang content } type rating formats score cover { original { url } preview: resize(width: 350, height: 500) { url } } } }"#;
+
+pub const LATEST_UPDATES_QUERY: &str = r#"query fetchLatestMangaUpdates($first: Int!, $type: MangaTypeFilter, $label: MangaLabelFilter) { mangas(first: $first, orderBy: { field: LAST_CHAPTER_AT, direction: DESC }, chapters: { start: 1 }, type: $type, label: $label) { edges { node { id slug originalName { lang content } titles { lang content } alternativeNames { lang content } type rating formats score cover { original { url } preview: resize(width: 350, height: 500) { url } } lastChapters { id slug number volume name createdAt } } } } }"#;
+
+pub const LATEST_TITLES_QUERY: &str = r#"query fetchLatestMangaTitles($first: Int!, $type: MangaTypeFilter, $label: MangaLabelFilter) { mangas(first: $first, orderBy: { field: CREATED_AT, direction: DESC }, type: $type, label: $label) { edges { node { id slug originalName { lang content } titles { lang content } alternativeNames { lang content } type rating formats score cover { original { url } preview: resize(width: 350, height: 500) { url } } } } } }"#;
+
+pub const TOP_BY_TYPE_QUERY: &str = r#"query fetchTopMangaByType($first: Int!, $type: MangaTypeFilter, $label: MangaLabelFilter) { mangas(first: $first, orderBy: { field: SCORE, direction: DESC }, type: $type, label: $label) { edges { node { id slug originalName { lang content } titles { lang content } alternativeNames { lang content } type rating formats score cover { original { url } preview: resize(width: 350, height: 500) { url } } } } } }"#;
 
 pub const CHAPTERS_QUERY: &str = r#"query fetchTachiyomiChapters($mangaId: ID!) { mangaTachiyomiChapters(mangaId: $mangaId) { message chapters { id slug branchId name teamIds number volume createdAt } teams { id slug name } } }"#;
 
@@ -66,6 +74,20 @@ impl FiltersDto {
 pub struct DetailsVariables<'a> {
 	#[serde(rename = "mangaId")]
 	pub manga_id: &'a str,
+}
+
+#[derive(Serialize)]
+pub struct PeriodVariables<'a> {
+	pub period: &'a str,
+}
+
+#[derive(Serialize)]
+pub struct MangaConnectionVariables {
+	pub first: i32,
+	#[serde(rename = "type", skip_serializing_if = "Option::is_none")]
+	pub kind: Option<FiltersDto>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub label: Option<FiltersDto>,
 }
 
 #[derive(Serialize)]
