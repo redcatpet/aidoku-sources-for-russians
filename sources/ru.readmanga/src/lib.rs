@@ -2,7 +2,7 @@
 extern crate alloc;
 
 use aidoku::prelude::*;
-use aidoku::{ImageRequestProvider, ListingProvider, Source, WebLoginHandler};
+use aidoku::{Home, ImageRequestProvider, ListingProvider, Source, WebLoginHandler};
 use grouple::{Config, Grouple};
 
 struct RuReadManga;
@@ -15,6 +15,7 @@ impl Config for RuReadManga {
 register_source!(
 	Grouple<RuReadManga>,
 	ListingProvider,
+	Home,
 	ImageRequestProvider,
 	WebLoginHandler
 );

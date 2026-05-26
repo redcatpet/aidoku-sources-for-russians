@@ -10,8 +10,9 @@ use aidoku::imports::html::{Document, Html};
 use aidoku::imports::net::{Request, TimeUnit, set_rate_limit};
 use aidoku::prelude::*;
 use aidoku::{
-	Chapter, FilterValue, HashMap, ImageRequestProvider, Listing, ListingProvider, Manga,
-	MangaPageResult, Page, PageContent, PageContext, Result, Source, WebLoginHandler,
+	Chapter, FilterValue, HashMap, Home, HomeComponent, HomeComponentValue, HomeLayout,
+	ImageRequestProvider, Link, Listing, ListingKind, ListingProvider, Manga, MangaPageResult,
+	Page, PageContent, PageContext, Result, Source, WebLoginHandler,
 	alloc::{String, Vec},
 };
 use alloc::format;
@@ -30,6 +31,8 @@ pub trait Config: 'static {
 }
 
 const PAGE_SIZE: i32 = 50;
+const HOME_FEATURED_COUNT: usize = 3;
+const HOME_SCROLLER_COUNT: usize = 18;
 
 pub struct Grouple<C: Config>(PhantomData<C>);
 
@@ -134,6 +137,14 @@ impl<C: Config> Grouple<C> {
 			has_next_page,
 		}
 	}
+
+	fn fetch_listing(sort_type: &str, page: i32) -> Result<MangaPageResult> {
+		let base = Self::base_url();
+		let offset = PAGE_SIZE * (page - 1).max(0);
+		let url = format!("{base}/list?sortType={sort_type}&offset={offset}");
+		let doc = Self::fetch_html(&url)?;
+		Ok(Self::parse_listing(&doc))
+	}
 }
 
 impl<C: Config> Source for Grouple<C> {
@@ -227,17 +238,90 @@ impl<C: Config> Source for Grouple<C> {
 
 impl<C: Config> ListingProvider for Grouple<C> {
 	fn get_manga_list(&self, listing: Listing, page: i32) -> Result<MangaPageResult> {
-		let base = Self::base_url();
-		let offset = PAGE_SIZE * (page - 1).max(0);
 		let sort_type = match listing.id.as_str() {
 			"latest" => "updated",
 			"new" => "created",
 			_ => "rate",
 		};
-		let url = format!("{base}/list?sortType={sort_type}&offset={offset}");
-		let doc = Self::fetch_html(&url)?;
-		Ok(Self::parse_listing(&doc))
+		Self::fetch_listing(sort_type, page)
 	}
+}
+
+impl<C: Config> Home for Grouple<C> {
+	fn get_home(&self) -> Result<HomeLayout> {
+		let popular = Self::fetch_listing("rate", 1)?.entries;
+		let latest = Self::fetch_listing("updated", 1)
+			.map(|r| r.entries)
+			.unwrap_or_default();
+		let new = Self::fetch_listing("created", 1)
+			.map(|r| r.entries)
+			.unwrap_or_default();
+
+		let featured: Vec<Manga> = popular
+			.iter()
+			.take(HOME_FEATURED_COUNT)
+			.cloned()
+			.map(|m| self.get_manga_update(m.clone(), true, false).unwrap_or(m))
+			.collect();
+		let more_popular: Vec<Manga> = popular
+			.into_iter()
+			.skip(HOME_FEATURED_COUNT)
+			.take(HOME_SCROLLER_COUNT)
+			.collect();
+
+		let mut components = Vec::with_capacity(4);
+		if !featured.is_empty() {
+			components.push(HomeComponent {
+				title: Some("Популярное".to_string()),
+				subtitle: Some("Лучшие тайтлы".to_string()),
+				value: HomeComponentValue::BigScroller {
+					entries: featured,
+					auto_scroll_interval: Some(8.0),
+				},
+			});
+		}
+		push_home_scroller(
+			&mut components,
+			"popular",
+			"Ещё популярное",
+			"Продолжение подборки",
+			more_popular,
+		);
+		push_home_scroller(
+			&mut components,
+			"latest",
+			"Последние обновления",
+			"Свежие главы",
+			latest,
+		);
+		push_home_scroller(&mut components, "new", "Новинки", "Новые тайтлы", new);
+
+		Ok(HomeLayout { components })
+	}
+}
+
+fn push_home_scroller(
+	components: &mut Vec<HomeComponent>,
+	id: &'static str,
+	title: &'static str,
+	subtitle: &'static str,
+	entries: Vec<Manga>,
+) {
+	if entries.is_empty() {
+		return;
+	}
+	components.push(HomeComponent {
+		title: Some(title.to_string()),
+		subtitle: Some(subtitle.to_string()),
+		value: HomeComponentValue::Scroller {
+			entries: entries.into_iter().map(Link::from).collect(),
+			listing: Some(Listing {
+				id: id.to_string(),
+				name: title.to_string(),
+				kind: ListingKind::Default,
+			}),
+		},
+	});
 }
 
 impl<C: Config> ImageRequestProvider for Grouple<C> {
