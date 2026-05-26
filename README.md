@@ -33,8 +33,8 @@ https://raw.githubusercontent.com/redcatpet/aidoku-sources-for-russians/gh-pages
 | Источник | Сайт | Версия | Статус | Содержимое |
 | --- | --- | :---: | --- | --- |
 | [AllHentai](sources/ru.allhentai/) | https://allhen.online | v6 | beta, web-login | манга 18+ |
-| [Senkuro](sources/ru.senkuro/) | https://senkuro.com | v11 | работает | манга, манхва, маньхуа, комиксы |
-| [Senkognito](sources/ru.senkognito/) | https://senkognito.com | v10 | работает | 18+ каталог Senkuro |
+| [Senkuro](sources/ru.senkuro/) | https://senkuro.com | v12 | работает | манга, манхва, маньхуа, комиксы |
+| [Senkognito](sources/ru.senkognito/) | https://senkognito.com | v11 | работает | 18+ каталог Senkuro |
 | [ReadManga](sources/ru.readmanga/) | https://readmanga.live | v5 | beta, web-login | манга |
 | [MangaBuff](sources/ru.mangabuff/) | https://mangabuff.ru | v1 | beta | манга, манхва |
 | [Ranobes](sources/ru.ranobes/) | https://ranobes.com | v7 | beta | ранобэ |
@@ -44,6 +44,7 @@ https://raw.githubusercontent.com/redcatpet/aidoku-sources-for-russians/gh-pages
 ## Что исправлено в этом форке
 
 - Senkuro снова использует актуальный GraphQL-запрос `mangaTachiyomiSearch` и типы фильтров `MangaTachiyomiSearch*Filter`.
+- У Senkuro обновлены типы фильтров поиска после изменения схемы API: label, format и rating больше не падают с `Unknown type`.
 - Фильтры типа, формата, статуса, статуса перевода, жанров и возрастного рейтинга снова передаются в API.
 - У Ранобэ.рф исправлена битая кодировка описаний и текста глав.
 - У Ранобэ.рф добавлен повтор сетевого запроса и fallback-каталог через главную страницу, если `/v3/book` обрывается.
