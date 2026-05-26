@@ -28,6 +28,10 @@ pub trait Config: 'static {
 	/// User-Agent string. Most Grouple sites accept "arora", but a normal UA
 	/// works too. Override per-source if a particular site is finicky.
 	const USER_AGENT: &'static str = "arora";
+	/// Whether to replay the free-form Cookie setting.
+	const ENABLE_MANUAL_COOKIES: bool = true;
+	/// Whether to replay the optional Grouple JWT setting.
+	const ENABLE_AUTH_TOKEN: bool = true;
 }
 
 const PAGE_SIZE: i32 = 50;
@@ -61,8 +65,12 @@ fn store_cookie<C: Config>(value: &str) {
 /// `https://3.grouple.co/private/settings/token`). When set, replayed in
 /// `Authorization: Bearer …` on every request — works alongside the cookie
 /// jar so users can pick whichever auth path is more convenient.
-fn stored_token() -> Option<String> {
-	defaults_get::<String>("authToken").filter(|s| !s.is_empty())
+fn stored_token<C: Config>() -> Option<String> {
+	if C::ENABLE_AUTH_TOKEN {
+		defaults_get::<String>("authToken").filter(|s| !s.is_empty())
+	} else {
+		None
+	}
 }
 
 /// Free-form Cookie header set by the user from browser DevTools. The most
@@ -70,8 +78,12 @@ fn stored_token() -> Option<String> {
 /// per-Grouple JWT isn't accepted by the HTML pages, and Google OAuth is
 /// blocked in WebKit, the user can copy the entire `Cookie:` header from a
 /// logged-in browser session and paste it here.
-fn manual_cookies() -> Option<String> {
-	defaults_get::<String>("manualCookies").filter(|s| !s.is_empty())
+fn manual_cookies<C: Config>() -> Option<String> {
+	if C::ENABLE_MANUAL_COOKIES {
+		defaults_get::<String>("manualCookies").filter(|s| !s.is_empty())
+	} else {
+		None
+	}
 }
 
 impl<C: Config> Grouple<C> {
@@ -98,13 +110,13 @@ impl<C: Config> Grouple<C> {
 		// session, byte-for-byte), otherwise replay whatever the WebView
 		// captured. Fold them together when both are set so cookies set by
 		// post-login navigation don't get dropped.
-		match (manual_cookies(), stored_cookie::<C>()) {
+		match (manual_cookies::<C>(), stored_cookie::<C>()) {
 			(Some(m), Some(c)) => req = req.header("Cookie", &format!("{m}; {c}")),
 			(Some(m), None) => req = req.header("Cookie", &m),
 			(None, Some(c)) => req = req.header("Cookie", &c),
 			(None, None) => {}
 		}
-		if let Some(t) = stored_token() {
+		if let Some(t) = stored_token::<C>() {
 			req = req.header("Authorization", &format!("Bearer {t}"));
 		}
 		Ok(req)
@@ -334,13 +346,13 @@ impl<C: Config> ImageRequestProvider for Grouple<C> {
 		// session, byte-for-byte), otherwise replay whatever the WebView
 		// captured. Fold them together when both are set so cookies set by
 		// post-login navigation don't get dropped.
-		match (manual_cookies(), stored_cookie::<C>()) {
+		match (manual_cookies::<C>(), stored_cookie::<C>()) {
 			(Some(m), Some(c)) => req = req.header("Cookie", &format!("{m}; {c}")),
 			(Some(m), None) => req = req.header("Cookie", &m),
 			(None, Some(c)) => req = req.header("Cookie", &c),
 			(None, None) => {}
 		}
-		if let Some(t) = stored_token() {
+		if let Some(t) = stored_token::<C>() {
 			req = req.header("Authorization", &format!("Bearer {t}"));
 		}
 		Ok(req)

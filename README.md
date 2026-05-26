@@ -35,7 +35,7 @@ https://raw.githubusercontent.com/redcatpet/aidoku-sources-for-russians/gh-pages
 | [AllHentai](sources/ru.allhentai/) | https://allhen.online | v6 | beta, web-login | манга 18+ |
 | [Senkuro](sources/ru.senkuro/) | https://senkuro.com | v12 | работает | манга, манхва, маньхуа, комиксы |
 | [Senkognito](sources/ru.senkognito/) | https://senkognito.com | v11 | работает | 18+ каталог Senkuro |
-| [ReadManga](sources/ru.readmanga/) | https://readmanga.live | v6 | beta, web-login | манга |
+| [ReadManga](sources/ru.readmanga/) | https://readmanga.live | v7 | beta, web-login | манга |
 | [InkStory](sources/ru.inkstory/) | https://inkstory.net | v1 | beta, web-login | манга, манхва, маньхуа |
 | [MangaBuff](sources/ru.mangabuff/) | https://mangabuff.ru | v1 | beta | манга, манхва |
 | [Ranobes](sources/ru.ranobes/) | https://ranobes.com | v7 | beta | ранобэ |
@@ -54,6 +54,7 @@ https://raw.githubusercontent.com/redcatpet/aidoku-sources-for-russians/gh-pages
 - Домашняя страница Senkuro стала ближе к сайту: «Самое читаемое» за день/неделю/месяц, последние обновления, новые тайтлы, топ манхв и типовые ленты берутся из актуального API `api.senkuro.com`.
 - Верхняя витрина Senkuro получает описания, авторов и теги, а обложки грузятся через уменьшенные изображения, чтобы лента открывалась быстрее.
 - У ReadManga добавлена домашняя страница с большой витриной, популярным, последними обновлениями и новинками.
+- У ReadManga настройки стали чище: убраны нерабочие ручные Cookies/Auth Token, домен выбирается из списка, карточки получили рейтинг/главы/жанры/описание, а обложка больше не прыгает при открытии тайтла.
 - Добавлен InkStory с живыми подборками с API сайта, красивой домашней страницей, поиском, чтением глав и авторизацией через WebView/Cookie/Access Token.
 - Версии изменённых источников увеличены, чтобы Aidoku предложил обновление после публикации списка.
 - README и ссылки на список источников обновлены под репозиторий `redcatpet/aidoku-sources-for-russians`.

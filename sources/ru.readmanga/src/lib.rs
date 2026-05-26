@@ -10,6 +10,8 @@ struct RuReadManga;
 impl Config for RuReadManga {
 	const NAME: &'static str = "ReadManga";
 	const DEFAULT_BASE_URL: &'static str = "https://a.zazaza.me";
+	const ENABLE_MANUAL_COOKIES: bool = false;
+	const ENABLE_AUTH_TOKEN: bool = false;
 }
 
 register_source!(
