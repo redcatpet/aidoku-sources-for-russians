@@ -477,6 +477,7 @@ fn books_to_result(books: Vec<Book>, _page: i32) -> Result<MangaPageResult> {
 
 fn book_to_manga(book: Book) -> Manga {
 	let title = best_name(&book.name).unwrap_or_else(|| book.slug.clone());
+	let viewer = viewer_for(&book);
 	let mut tags = Vec::new();
 	if let Some(labels) = book.labels {
 		for label in labels {
@@ -507,7 +508,7 @@ fn book_to_manga(book: Book) -> Manga {
 		description: book.description.filter(|s| !s.trim().is_empty()),
 		status: map_status(book.status.as_deref()),
 		content_rating: map_content_rating(book.content_status.as_deref()),
-		viewer: viewer_for(&book),
+		viewer,
 		tags: if tags.is_empty() { None } else { Some(tags) },
 		..Default::default()
 	}
@@ -640,8 +641,9 @@ fn branch_name(id: &str, branches: &[Branch]) -> Option<String> {
 }
 
 fn trim_number(n: f32) -> String {
-	if (n.fract()).abs() < 0.001 {
-		format!("{}", n as i32)
+	let whole = n as i32;
+	if (n - whole as f32).abs() < 0.001 {
+		format!("{whole}")
 	} else {
 		format!("{n}")
 	}
