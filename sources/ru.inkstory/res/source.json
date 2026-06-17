@@ -2,7 +2,7 @@
 	"info": {
 		"id": "ru.inkstory",
 		"name": "InkStory",
-		"version": 1,
+		"version": 2,
 		"url": "https://inkstory.net",
 		"contentRating": 1,
 		"languages": ["ru"]

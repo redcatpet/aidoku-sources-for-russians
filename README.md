@@ -36,7 +36,7 @@ https://raw.githubusercontent.com/redcatpet/aidoku-sources-for-russians/gh-pages
 | [Senkuro](sources/ru.senkuro/) | https://senkuro.com | v12 | работает | манга, манхва, маньхуа, комиксы |
 | [Senkognito](sources/ru.senkognito/) | https://senkognito.com | v11 | работает | 18+ каталог Senkuro |
 | [ReadManga](sources/ru.readmanga/) | https://readmanga.live | v7 | beta, web-login | манга |
-| [InkStory](sources/ru.inkstory/) | https://inkstory.net | v1 | beta, web-login | манга, манхва, маньхуа |
+| [InkStory](sources/ru.inkstory/) | https://inkstory.net | v2 | beta, web-login | манга, манхва, маньхуа |
 | [MangaBuff](sources/ru.mangabuff/) | https://mangabuff.ru | v1 | beta | манга, манхва |
 | [Ranobes](sources/ru.ranobes/) | https://ranobes.com | v7 | beta | ранобэ |
 | [RanobeHub](sources/ru.ranobehub/) | https://ranobehub.org | v2 | beta | ранобэ |
@@ -56,6 +56,7 @@ https://raw.githubusercontent.com/redcatpet/aidoku-sources-for-russians/gh-pages
 - У ReadManga добавлена домашняя страница с большой витриной, популярным, последними обновлениями и новинками.
 - У ReadManga настройки стали чище: убраны нерабочие ручные Cookies/Auth Token, домен выбирается из списка, карточки получили рейтинг/главы/жанры/описание, а обложка больше не прыгает при открытии тайтла.
 - Добавлен InkStory с живыми подборками с API сайта, красивой домашней страницей, поиском, чтением глав и авторизацией через WebView/Cookie/Access Token.
+- У InkStory исправлена загрузка обложек: источник больше не добавляет параметры ресайза, которые CDN `static.inuko.me` сейчас отдаёт как 404.
 - Версии изменённых источников увеличены, чтобы Aidoku предложил обновление после публикации списка.
 - README и ссылки на список источников обновлены под репозиторий `redcatpet/aidoku-sources-for-russians`.
 

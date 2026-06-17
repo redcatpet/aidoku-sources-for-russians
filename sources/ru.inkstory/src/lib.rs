@@ -584,11 +584,7 @@ fn map_content_rating(status: Option<&str>) -> ContentRating {
 }
 
 fn image_url(url: &str) -> String {
-	if url.contains('?') {
-		url.to_string()
-	} else {
-		format!("{url}?width=360&type=webp")
-	}
+	url.to_string()
 }
 
 fn chapter_to_chapter(chapter: ApiChapter, slug: &str, branches: &[Branch]) -> Chapter {
