@@ -32,6 +32,10 @@ fn base_url() -> String {
 	url
 }
 
+fn high_quality_covers() -> bool {
+	defaults_get::<bool>("highQualityCovers").unwrap_or(true)
+}
+
 fn site_url(path: &str) -> String {
 	let base = base_url();
 	if path.starts_with('/') {
@@ -76,7 +80,7 @@ fn parse_tile(el: &Element) -> Option<Manga> {
 		.and_then(|e| e.attr("style"))
 		.as_deref()
 		.and_then(extract_background_image)
-		.map(|u| absolutize(&u));
+		.map(|u| poster_url(&u));
 	let genres = el
 		.select_first("div.cards__info")
 		.and_then(|e| e.text())
@@ -184,6 +188,24 @@ fn absolutize(url: &str) -> String {
 	}
 }
 
+fn poster_url(url: &str) -> String {
+	let full_marker = "/img/manga/posters/";
+	let thumbnail_marker = "/x180/img/manga/posters/";
+	let path = if let Some(index) = url.find(thumbnail_marker) {
+		Some(&url[index + "/x180".len()..])
+	} else {
+		url.find(full_marker).map(|index| &url[index..])
+	};
+	let Some(path) = path else {
+		return absolutize(url);
+	};
+	if high_quality_covers() {
+		format!("{DEFAULT_BASE_URL}{path}")
+	} else {
+		site_url(&format!("/x180{path}"))
+	}
+}
+
 fn extract_background_image(style: &str) -> Option<String> {
 	let needle = "url(";
 	let start = style.find(needle)? + needle.len();
@@ -211,7 +233,7 @@ fn fill_details(doc: &Document, manga: &mut Manga) {
 		.and_then(|e| e.attr("content"))
 		.filter(|s| !s.is_empty());
 	if let Some(cover) = cover {
-		manga.cover = Some(absolutize(&cover));
+		manga.cover = Some(poster_url(&cover));
 	}
 	manga.description = doc
 		.select_first("meta[property=\"og:description\"]")

@@ -23,7 +23,7 @@ https://redcatpet.github.io/aidoku-sources-for-russians/index.min.json
 | [Senkognito](sources/ru.senkognito/) | [senkognito.com](https://senkognito.com) | v12 | работает | каталог 18+ Senkuro |
 | [ReadManga](sources/ru.readmanga/) | [readmanga.live](https://readmanga.live) | v7 | beta, вход через WebView | манга |
 | [InkStory](sources/ru.inkstory/) | [inkstory.net](https://inkstory.net) | v2 | beta, вход через WebView | манга, манхва, маньхуа |
-| [MangaBuff](sources/ru.mangabuff/) | [mangabuff.ru](https://mangabuff.ru) | v3 | beta | манга, манхва, маньхуа |
+| [MangaBuff](sources/ru.mangabuff/) | [mangabuff.ru](https://mangabuff.ru) | v4 | beta | манга, манхва, маньхуа |
 | [Ranobes](sources/ru.ranobes/) | [ranobes.com](https://ranobes.com) | v7 | beta | ранобэ |
 | [RanobeHub](sources/ru.ranobehub/) | [ranobehub.org](https://ranobehub.org) | v2 | beta | ранобэ |
 | [Ранобэ.рф](sources/ru.ranoberf/) | [ранобэ.рф](https://ранобэ.рф) | v4 | beta | ранобэ |

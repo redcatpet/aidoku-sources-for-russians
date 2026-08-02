@@ -22,5 +22,20 @@
 				"refreshes": ["listings", "content"]
 			}
 		]
+	},
+	{
+		"type": "group",
+		"title": "Обложки",
+		"footer": "Оригиналы заметно чётче, но могут весить около 1 МБ каждый. Экономичный режим использует миниатюры шириной 180 px.",
+		"items": [
+			{
+				"type": "switch",
+				"key": "highQualityCovers",
+				"title": "Высокое качество",
+				"subtitle": "Загружать оригинальные обложки с основного хоста",
+				"default": true,
+				"refreshes": ["listings", "content"]
+			}
+		]
 	}
 ]
