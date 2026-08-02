@@ -5,9 +5,15 @@ const API_DOMAIN_KEY: &str = "apiDomain";
 const ENGLISH_TITLES_KEY: &str = "englishTitles";
 
 pub const DEFAULT_API_DOMAIN: &str = "https://api.senkuro.com";
+pub const RUSSIAN_API_DOMAIN: &str = "https://api.senkuro.me";
 
-pub fn public_api_url() -> String {
-	alloc::format!("{DEFAULT_API_DOMAIN}/graphql")
+pub fn fallback_api_url(current: &str) -> String {
+	let base = if current.starts_with(DEFAULT_API_DOMAIN) {
+		RUSSIAN_API_DOMAIN
+	} else {
+		DEFAULT_API_DOMAIN
+	};
+	alloc::format!("{base}/graphql")
 }
 
 pub fn api_url() -> String {

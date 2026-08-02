@@ -2,7 +2,7 @@
 	{
 		"type": "group",
 		"title": "Домен",
-		"footer": "Если MangaBuff отвечает HTTP 403 при включённом VPN, выберите резервный зарубежный хост. После смены Aidoku обновит меню и содержимое источника.",
+		"footer": "Основной домен лучше подходит для VPN и зарубежных сетей. Зеркала wss доступны прежде всего из России, а из-за рубежа часто отвечают HTTP 403 и могут загружаться медленнее.",
 		"items": [
 			{
 				"type": "select",
@@ -15,9 +15,9 @@
 					"https://wss2.mangabuff.ru"
 				],
 				"titles": [
-					"Основной — mangabuff.ru",
-					"Зарубежный — wss.mangabuff.ru",
-					"Зарубежный 2 — wss2.mangabuff.ru"
+					"Основной / VPN — mangabuff.ru",
+					"Россия, резерв — wss.mangabuff.ru",
+					"Россия, резерв 2 — wss2.mangabuff.ru"
 				],
 				"refreshes": ["listings", "content"]
 			}

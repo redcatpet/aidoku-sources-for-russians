@@ -18,7 +18,7 @@
 	{
 		"type": "group",
 		"title": "Домен",
-		"footer": "Если основной домен временно редиректит, отдаёт 5xx или показывает защиту, выберите другое зеркало из списка.",
+		"footer": "a.zazaza.me работает без VPN и доступен также из зарубежных сетей. readmanga.me — дополнительный адрес для VPN: из России он может не отвечать.",
 		"items": [
 			{
 				"type": "select",
@@ -27,15 +27,11 @@
 				"default": "https://a.zazaza.me",
 				"values": [
 					"https://a.zazaza.me",
-					"https://readmanga.live",
-					"https://3.readmanga.ru",
-					"https://readmanga.ru"
+					"https://readmanga.me"
 				],
 				"titles": [
-					"a.zazaza.me",
-					"readmanga.live",
-					"3.readmanga.ru",
-					"readmanga.ru"
+					"Россия / универсальный — a.zazaza.me",
+					"VPN / вне России — readmanga.me"
 				],
 				"refreshes": ["listings", "content"]
 			}

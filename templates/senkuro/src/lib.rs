@@ -50,6 +50,10 @@ pub trait Config: 'static {
 	/// to ["EXPLICIT", "QUESTIONABLE"] so the catalog actually shows the adult content
 	/// the site is for; Senkuro leaves it empty so the API serves its default safe set.
 	const DEFAULT_RATING_INCLUDE: &'static [&'static str] = &[];
+	/// Label slugs that are required for every catalog/search request.
+	const DEFAULT_LABEL_INCLUDE: &'static [&'static str] = &[];
+	/// Whether the generic comics section should be shown on the home page.
+	const INCLUDE_COMICS: bool = true;
 }
 
 pub struct SenkuroEngine<C: Config>(PhantomData<C>);
@@ -78,6 +82,10 @@ impl<C: Config> Source for SenkuroEngine<C> {
 		let mut status = FiltersDto::default();
 		let mut translation_status = FiltersDto::default();
 		let mut rating = FiltersDto::default();
+
+		for value in C::DEFAULT_LABEL_INCLUDE {
+			label.include.push((*value).to_string());
+		}
 
 		for f in filters {
 			match f {
@@ -444,6 +452,9 @@ impl<C: Config> SenkuroEngine<C> {
 			});
 		}
 		for (lid, title, type_slug) in TYPE_SECTIONS {
+			if *lid == "comics" && !C::INCLUDE_COMICS {
+				continue;
+			}
 			let entries = Self::fetch_catalog(*lid, *type_slug, 1)
 				.map(|r| r.entries)
 				.unwrap_or_default();
@@ -470,6 +481,9 @@ impl<C: Config> SenkuroEngine<C> {
 
 fn default_label<C: Config>() -> Option<FiltersDto> {
 	let mut label = FiltersDto::default();
+	for value in C::DEFAULT_LABEL_INCLUDE {
+		label.include.push((*value).to_string());
+	}
 	for g in C::EXCLUDE_GENRES {
 		label.exclude.push((*g).to_string());
 	}
@@ -669,6 +683,9 @@ impl<C: Config> Home for SenkuroEngine<C> {
 		);
 		push_scroller(&mut components, "top_manhwa", "Топ манхв", top_manhwa);
 		for (lid, title, type_slug) in TYPE_SECTIONS {
+			if *lid == "comics" && !C::INCLUDE_COMICS {
+				continue;
+			}
 			let entries = Self::fetch_catalog(*lid, *type_slug, 1)
 				.map(|r| r.entries)
 				.unwrap_or_default();
@@ -766,10 +783,7 @@ fn post_graphql<T: DeserializeOwned>(operation: &str, body: &[u8]) -> Result<T> 
 	match post_graphql_at(operation, body, &url) {
 		Ok(data) => Ok(data),
 		Err(primary_error) => {
-			let fallback = settings::public_api_url();
-			if url == fallback {
-				return Err(primary_error);
-			}
+			let fallback = settings::fallback_api_url(&url);
 			println!(
 				"[senkuro:{operation}] {url} failed, retrying through {fallback}: {primary_error:?}"
 			);

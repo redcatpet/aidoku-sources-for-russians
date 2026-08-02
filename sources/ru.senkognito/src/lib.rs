@@ -19,6 +19,10 @@ impl Config for RuSenkognito {
 	// cancel the NSFW filtering. Empirically, only `include: [EXPLICIT]` produces
 	// the adult-focused catalog Senkognito users expect.
 	const DEFAULT_RATING_INCLUDE: &'static [&'static str] = &["EXPLICIT"];
+	// EXPLICIT alone also contains violent or mature non-pornographic works.
+	// Requiring the hentai label keeps this source focused on its stated purpose.
+	const DEFAULT_LABEL_INCLUDE: &'static [&'static str] = &["hentai"];
+	const INCLUDE_COMICS: bool = false;
 }
 
 register_source!(
