@@ -4,18 +4,13 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use serde::Deserialize;
 
-// --- filters (mangaTachiyomiSearchFilters) ---
+// --- filters (allLabels) ---
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FiltersResponse {
-	pub manga_tachiyomi_search_filters: Option<FiltersPayload>,
-}
-
-#[derive(Deserialize, Default)]
-pub struct FiltersPayload {
 	#[serde(default)]
-	pub labels: Vec<LabelDto>,
+	pub all_labels: Vec<LabelDto>,
 }
 
 #[derive(Deserialize)]
@@ -25,6 +20,10 @@ pub struct LabelDto {
 	pub id: Option<String>,
 	#[serde(default)]
 	pub root_id: Option<String>,
+	#[serde(default)]
+	pub depth: Option<i32>,
+	#[serde(default)]
+	pub rating: Option<String>,
 	pub slug: String,
 	#[serde(default)]
 	pub titles: Vec<I18nString>,
@@ -67,7 +66,7 @@ pub struct Image {
 	pub preview: Option<ImageSize>,
 }
 
-// --- search (mangaTachiyomiSearch field) ---
+// --- catalog/search ---
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -89,9 +88,21 @@ pub struct MangaConnectionData {
 }
 
 #[derive(Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct MangaConnection {
 	#[serde(default)]
 	pub edges: Vec<MangaEdge>,
+	#[serde(default)]
+	pub page_info: PageInfo,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct PageInfo {
+	#[serde(default)]
+	pub has_next_page: bool,
+	#[serde(default)]
+	pub end_cursor: Option<String>,
 }
 
 #[derive(Deserialize, Default)]
@@ -150,7 +161,11 @@ impl SearchManga {
 				}
 			}
 		}
-		let description = update_description(&self.last_chapters);
+		let description = update_description(&self.last_chapters).or_else(|| {
+			self.score
+				.filter(|score| *score > 0.0)
+				.map(|score| alloc::format!("★ {score:.1}"))
+		});
 		Manga {
 			key: build_manga_key(&self.id, &self.slug),
 			title,
@@ -193,7 +208,11 @@ pub struct MangaInfo {
 	#[serde(default)]
 	pub rating: Option<String>,
 	#[serde(default)]
+	pub score: Option<f32>,
+	#[serde(default)]
 	pub formats: Option<Vec<String>>,
+	#[serde(default)]
+	pub translation_status: Option<String>,
 	#[serde(default)]
 	pub labels: Vec<Label>,
 	#[serde(default)]
@@ -267,16 +286,19 @@ impl MangaInfo {
 					.and_then(|l| l.description.clone())
 			});
 
-		// Tags: localized label names
-		let mut tags: Vec<String> = self
-			.labels
-			.iter()
-			.filter_map(|l| pick_label_title(&l.titles))
-			.collect();
-		// Append formats as pseudo-tags for visibility
+		// Keep the type, localized labels, and localized formats in a stable order.
+		let mut tags: Vec<String> = Vec::new();
+		if let Some(kind) = self.kind.as_deref().and_then(display_manga_type) {
+			push_unique(&mut tags, kind.to_string());
+		}
+		for label in &self.labels {
+			if let Some(title) = pick_label_title(&label.titles) {
+				push_unique(&mut tags, title);
+			}
+		}
 		if let Some(formats) = &self.formats {
-			for f in formats {
-				tags.push(f.clone());
+			for format in formats.iter().filter_map(|format| display_manga_format(format)) {
+				push_unique(&mut tags, format.to_string());
 			}
 		}
 
@@ -292,10 +314,31 @@ impl MangaInfo {
 		} else {
 			None
 		};
-		let description = match (alt_names, description) {
-			(Some(a), Some(d)) => Some(alloc::format!("{a}\n\n{d}")),
-			(Some(a), None) => Some(a),
-			(None, d) => d,
+		let mut description_blocks: Vec<String> = Vec::new();
+		if let Some(alt_names) = alt_names {
+			description_blocks.push(alt_names);
+		}
+		let mut metadata: Vec<String> = Vec::new();
+		if let Some(score) = self.score.filter(|score| *score > 0.0) {
+			metadata.push(alloc::format!("Рейтинг: {score:.1}"));
+		}
+		if let Some(status) = self
+			.translation_status
+			.as_deref()
+			.and_then(display_translation_status)
+		{
+			metadata.push(alloc::format!("Перевод: {status}"));
+		}
+		if !metadata.is_empty() {
+			description_blocks.push(metadata.join(" • "));
+		}
+		if let Some(description) = description {
+			description_blocks.push(description);
+		}
+		let description = if description_blocks.is_empty() {
+			None
+		} else {
+			Some(description_blocks.join("\n\n"))
 		};
 
 		Manga {
@@ -503,6 +546,22 @@ fn display_manga_format(value: &str) -> Option<&'static str> {
 		"YONKOMA" => Some("Ёнкома"),
 		"SHORT" => Some("Короткое"),
 		_ => None,
+	}
+}
+
+fn display_translation_status(value: &str) -> Option<&'static str> {
+	match value {
+		"IN_PROGRESS" => Some("переводится"),
+		"FINISHED" => Some("завершён"),
+		"FROZEN" => Some("заморожен"),
+		"ABANDONED" => Some("заброшен"),
+		_ => None,
+	}
+}
+
+fn push_unique(items: &mut Vec<String>, value: String) {
+	if !items.iter().any(|item| item == &value) {
+		items.push(value);
 	}
 }
 

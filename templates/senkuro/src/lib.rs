@@ -6,6 +6,7 @@ mod graphql;
 mod models;
 mod settings;
 
+use aidoku::imports::defaults::{DefaultValue, defaults_get, defaults_set};
 use aidoku::imports::net::{Request, TimeUnit, set_rate_limit};
 use aidoku::prelude::*;
 use aidoku::{
@@ -21,10 +22,11 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 use graphql::{
-	CHAPTERS_QUERY, DETAILS_QUERY, DetailsVariables, FILTERS_QUERY, FiltersDto, GqlRequest,
-	LATEST_TITLES_QUERY, LATEST_UPDATES_QUERY, MANGAS_QUERY, MangaConnectionVariables,
-	MangasVariables, PAGE_SIZE, PAGES_QUERY, POPULAR_BY_PERIOD_QUERY, PagesVariables,
-	PeriodVariables, TOP_BY_TYPE_QUERY,
+	CHAPTERS_QUERY, DETAILS_QUERY, DateRangeDto, DetailsVariables, FILTERS_QUERY, FiltersDto,
+	GqlRequest, LATEST_TITLES_QUERY, LATEST_UPDATES_QUERY, MANGAS_QUERY,
+	MangaCatalogVariables, MangaConnectionVariables, MangasVariables, NumberRangeDto, PAGE_SIZE,
+	PAGES_QUERY, POPULAR_BY_PERIOD_QUERY, PagesVariables, PeriodVariables, TOP_BY_TYPE_QUERY,
+	WEB_MANGAS_QUERY,
 };
 use models::{
 	ChaptersData, DetailsData, FiltersResponse, GqlResponse, MangaConnectionData, MangasData,
@@ -46,9 +48,8 @@ pub trait Config: 'static {
 	/// hide adult tags; Senkognito leaves this empty.
 	const EXCLUDE_GENRES: &'static [&'static str] = &[];
 	/// Age-rating slugs that should always be included by default in catalog/search
-	/// requests (when the user hasn't picked any rating filter). Senkognito sets this
-	/// to ["EXPLICIT", "QUESTIONABLE"] so the catalog actually shows the adult content
-	/// the site is for; Senkuro leaves it empty so the API serves its default safe set.
+	/// requests when the user hasn't picked a rating filter. Senkognito uses EXPLICIT;
+	/// Senkuro leaves this empty.
 	const DEFAULT_RATING_INCLUDE: &'static [&'static str] = &[];
 	/// Label slugs that are required for every catalog/search request.
 	const DEFAULT_LABEL_INCLUDE: &'static [&'static str] = &[];
@@ -82,6 +83,12 @@ impl<C: Config> Source for SenkuroEngine<C> {
 		let mut status = FiltersDto::default();
 		let mut translation_status = FiltersDto::default();
 		let mut rating = FiltersDto::default();
+		let mut source = FiltersDto::default();
+		let mut origin_country = FiltersDto::default();
+		let mut chapters: Option<NumberRangeDto> = None;
+		let mut released_on: Option<DateRangeDto> = None;
+		let mut order_field = "POPULARITY_SCORE";
+		let mut order_direction = "DESC";
 
 		for value in C::DEFAULT_LABEL_INCLUDE {
 			label.include.push((*value).to_string());
@@ -89,6 +96,30 @@ impl<C: Config> Source for SenkuroEngine<C> {
 
 		for f in filters {
 			match f {
+				FilterValue::Sort {
+					id,
+					index,
+					ascending,
+				} if id == "sort" => {
+					order_field = match index {
+						1 => "SCORE",
+						2 => "CHAPTERS",
+						3 => "VIEWS",
+						4 => "CREATED_AT",
+						5 => "LAST_CHAPTER_AT",
+						_ => "POPULARITY_SCORE",
+					};
+					order_direction = if ascending { "ASC" } else { "DESC" };
+				}
+				FilterValue::Range { id, from, to } => match id.as_str() {
+					"chapters" => {
+						chapters = number_range(from, to);
+					}
+					"releasedOn" => {
+						released_on = year_range(from, to);
+					}
+					_ => {}
+				},
 				FilterValue::MultiSelect {
 					id,
 					included,
@@ -120,6 +151,14 @@ impl<C: Config> Source for SenkuroEngine<C> {
 								rating.include.extend(included);
 								rating.exclude.extend(excluded);
 							}
+							"source" => {
+								source.include.extend(included);
+								source.exclude.extend(excluded);
+							}
+							"originCountry" => {
+								origin_country.include.extend(included);
+								origin_country.exclude.extend(excluded);
+							}
 							_ => {}
 						}
 					}
@@ -130,6 +169,8 @@ impl<C: Config> Source for SenkuroEngine<C> {
 					"status" => status.include.push(value),
 					"translationStatus" => translation_status.include.push(value),
 					"rating" => rating.include.push(value),
+					"source" => source.include.push(value),
+					"originCountry" => origin_country.include.push(value),
 					_ => {}
 				},
 				_ => {}
@@ -161,34 +202,24 @@ impl<C: Config> Source for SenkuroEngine<C> {
 			.map(|q| q.trim().to_string())
 			.filter(|q| !q.is_empty());
 
-		let vars = MangasVariables {
+		let vars = MangaCatalogVariables {
+			first: PAGE_SIZE,
+			after: None,
 			search: trimmed_query,
 			kind: kind.into_option(),
-			status: status.into_option(),
-			translation_status: translation_status.into_option(),
-			label: label.into_option(),
 			format: format.into_option(),
+			status: status.into_option(),
+			source: source.into_option(),
 			rating: rating.into_option(),
-			offset: Some(PAGE_SIZE * (page - 1).max(0)),
+			chapters,
+			origin_country: origin_country.into_option(),
+			released_on,
+			label: label.into_option(),
+			translation_status: translation_status.into_option(),
+			order_field,
+			order_direction,
 		};
-
-		let payload = GqlRequest {
-			query: MANGAS_QUERY,
-			variables: vars,
-		};
-		let body = serde_json::to_vec(&payload).map_err(|e| error!("encode mangas: {e}"))?;
-		let data: MangasData = post_graphql("mangasCatalog", &body)?;
-		let result = data.manga_tachiyomi_search.unwrap_or_default();
-		let entries: Vec<Manga> = result
-			.mangas
-			.into_iter()
-			.map(|m| m.into_manga(C::BASE_URL))
-			.collect();
-		let has_next_page = entries.len() as i32 >= PAGE_SIZE;
-		Ok(MangaPageResult {
-			entries,
-			has_next_page,
-		})
+		Self::fetch_web_catalog(vars, page)
 	}
 
 	fn get_manga_update(
@@ -219,6 +250,11 @@ impl<C: Config> Source for SenkuroEngine<C> {
 			let mut detailed = info.into_manga(C::BASE_URL);
 			// Preserve key in the canonical form already stored by the app.
 			detailed.key = build_manga_key(&manga_id, &slug);
+			// Keep the cover users saw in the list. Senkuro may expose a different
+			// historical cover through its Tachiyomi detail endpoint.
+			if updated.cover.is_some() {
+				detailed.cover = updated.cover.take();
+			}
 			// Carry over chapters if we already had them.
 			detailed.chapters = updated.chapters.take();
 			updated = detailed;
@@ -311,8 +347,8 @@ impl<C: Config> DeepLinkHandler for SenkuroEngine<C> {
 }
 
 impl<C: Config> SenkuroEngine<C> {
-	/// Build a `mangaTachiyomiSearch` request with at most a single type filter
-	/// applied. Used by both [`ListingProvider`] tabs and home layout sections.
+	/// Build a current web-catalog request with at most a single type filter.
+	/// Used by both [`ListingProvider`] tabs and home layout sections.
 	fn fetch_catalog(
 		_listing_id: &str,
 		type_slug: Option<&'static str>,
@@ -323,32 +359,83 @@ impl<C: Config> SenkuroEngine<C> {
 			kind.include.push(t.to_string());
 		}
 
-		let vars = MangasVariables {
+		let vars = MangaCatalogVariables {
+			first: PAGE_SIZE,
+			after: None,
 			search: None,
 			kind: kind.into_option(),
-			status: None,
-			translation_status: None,
-			label: default_label::<C>(),
 			format: None,
+			status: None,
+			source: None,
 			rating: default_rating::<C>(),
-			offset: Some(PAGE_SIZE * (page - 1).max(0)),
+			chapters: None,
+			origin_country: None,
+			released_on: None,
+			label: default_label::<C>(),
+			translation_status: None,
+			order_field: "POPULARITY_SCORE",
+			order_direction: "DESC",
 		};
+		Self::fetch_web_catalog(vars, page)
+	}
+
+	fn fetch_web_catalog(
+		mut vars: MangaCatalogVariables,
+		page: i32,
+	) -> Result<MangaPageResult> {
+		let page = page.max(1);
+		vars.after = None;
+		vars.first = PAGE_SIZE;
+		let signature_body = serde_json::to_vec(&GqlRequest {
+			query: WEB_MANGAS_QUERY,
+			variables: &vars,
+		})
+		.map_err(|e| error!("encode catalog signature: {e}"))?;
+		let signature = fnv1a64(&signature_body);
+
+		let mut skip = 0usize;
+		if page > 1 {
+			let key = cursor_key(signature, page);
+			if let Some(cursor) = defaults_get::<String>(&key) {
+				vars.after = Some(cursor);
+			} else {
+				// Aidoku normally requests pages in order. For a direct jump, recover
+				// without a cursor while the API's 100-record limit allows it.
+				let cumulative = PAGE_SIZE.saturating_mul(page);
+				if cumulative > 100 {
+					return Ok(MangaPageResult {
+						entries: Vec::new(),
+						has_next_page: false,
+					});
+				}
+				vars.first = cumulative;
+				skip = (PAGE_SIZE.saturating_mul(page - 1)) as usize;
+			}
+		}
+
 		let body = serde_json::to_vec(&GqlRequest {
-			query: MANGAS_QUERY,
+			query: WEB_MANGAS_QUERY,
 			variables: vars,
 		})
-		.map_err(|e| error!("encode catalog: {e}"))?;
-		let data: MangasData = post_graphql("mangasCatalog", &body)?;
-		let result = data.manga_tachiyomi_search.unwrap_or_default();
-		let entries: Vec<Manga> = result
-			.mangas
+		.map_err(|e| error!("encode web catalog: {e}"))?;
+		let data: MangaConnectionData = post_graphql("fetchMangas", &body)?;
+		let connection = data.mangas.unwrap_or_default();
+		if let Some(cursor) = connection.page_info.end_cursor.clone() {
+			defaults_set(
+				&cursor_key(signature, page + 1),
+				DefaultValue::String(cursor),
+			);
+		}
+		let entries = connection
+			.edges
 			.into_iter()
-			.map(|m| m.into_manga(C::BASE_URL))
+			.skip(skip)
+			.take(PAGE_SIZE as usize)
+			.map(|edge| edge.node.into_manga(C::BASE_URL))
 			.collect();
-		let has_next_page = entries.len() as i32 >= PAGE_SIZE;
 		Ok(MangaPageResult {
 			entries,
-			has_next_page,
+			has_next_page: connection.page_info.has_next_page,
 		})
 	}
 
@@ -382,6 +469,7 @@ impl<C: Config> SenkuroEngine<C> {
 				first,
 				kind: kind.into_option(),
 				label: default_label::<C>(),
+				rating: default_rating::<C>(),
 			},
 		})
 		.map_err(|e| error!("encode {operation}: {e}"))?;
@@ -428,7 +516,22 @@ impl<C: Config> SenkuroEngine<C> {
 			.map(Link::from)
 			.collect();
 
-		let mut components: Vec<HomeComponent> = Vec::with_capacity(2 + TYPE_SECTIONS.len());
+		let latest_updates = Self::fetch_manga_connection(
+			LATEST_UPDATES_QUERY,
+			"fetchLatestMangaUpdates",
+			None,
+			HOME_SCROLLER_COUNT,
+		)
+		.unwrap_or_default();
+		let latest_titles = Self::fetch_manga_connection(
+			LATEST_TITLES_QUERY,
+			"fetchLatestMangaTitles",
+			None,
+			HOME_SCROLLER_COUNT,
+		)
+		.unwrap_or_default();
+
+		let mut components: Vec<HomeComponent> = Vec::with_capacity(4 + TYPE_SECTIONS.len());
 		components.push(HomeComponent {
 			title: Some("Популярное".to_string()),
 			subtitle: Some("За всё время".to_string()),
@@ -451,6 +554,18 @@ impl<C: Config> SenkuroEngine<C> {
 				},
 			});
 		}
+		push_scroller(
+			&mut components,
+			"latest_updates",
+			"Последние обновления",
+			latest_updates,
+		);
+		push_scroller(
+			&mut components,
+			"latest_titles",
+			"Новые тайтлы",
+			latest_titles,
+		);
 		for (lid, title, type_slug) in TYPE_SECTIONS {
 			if *lid == "comics" && !C::INCLUDE_COMICS {
 				continue;
@@ -496,6 +611,47 @@ fn default_rating<C: Config>() -> Option<FiltersDto> {
 		rating.include.push((*r).to_string());
 	}
 	rating.into_option()
+}
+
+fn number_range(from: Option<f32>, to: Option<f32>) -> Option<NumberRangeDto> {
+	let start = from.map(|value| value as i32).filter(|value| *value > 0);
+	let end = to
+		.map(|value| value as i32)
+		.filter(|value| *value < 999);
+	if start.is_none() && end.is_none() {
+		None
+	} else {
+		Some(NumberRangeDto { start, end })
+	}
+}
+
+fn year_range(from: Option<f32>, to: Option<f32>) -> Option<DateRangeDto> {
+	let start = from
+		.map(|value| value as i32)
+		.filter(|value| *value > 1970)
+		.map(|year| alloc::format!("{year}-01-01"));
+	let end = to
+		.map(|value| value as i32)
+		.filter(|value| *value < 2030)
+		.map(|year| alloc::format!("{year}-01-01"));
+	if start.is_none() && end.is_none() {
+		None
+	} else {
+		Some(DateRangeDto { start, end })
+	}
+}
+
+fn fnv1a64(bytes: &[u8]) -> u64 {
+	let mut hash = 0xcbf29ce484222325u64;
+	for byte in bytes {
+		hash ^= *byte as u64;
+		hash = hash.wrapping_mul(0x100000001b3);
+	}
+	hash
+}
+
+fn cursor_key(signature: u64, page: i32) -> String {
+	alloc::format!("senkuro.catalog.{signature:016x}.{page}")
 }
 
 const TYPE_SECTIONS: &[(&str, &str, Option<&str>)] = &[
@@ -544,6 +700,25 @@ impl<C: Config> ListingProvider for SenkuroEngine<C> {
 				has_next_page: false,
 			});
 		}
+		match id_ref {
+			"latest_updates" => {
+				return Self::fetch_static_listing(
+					LATEST_UPDATES_QUERY,
+					"fetchLatestMangaUpdates",
+					None,
+					page,
+				);
+			}
+			"latest_titles" => {
+				return Self::fetch_static_listing(
+					LATEST_TITLES_QUERY,
+					"fetchLatestMangaTitles",
+					None,
+					page,
+				);
+			}
+			_ => {}
+		}
 		if C::DEFAULT_RATING_INCLUDE.is_empty() {
 			match id_ref {
 				"top_week" => {
@@ -565,22 +740,6 @@ impl<C: Config> ListingProvider for SenkuroEngine<C> {
 						},
 						has_next_page: false,
 					});
-				}
-				"latest_updates" => {
-					return Self::fetch_static_listing(
-						LATEST_UPDATES_QUERY,
-						"fetchLatestMangaUpdates",
-						None,
-						page,
-					);
-				}
-				"latest_titles" => {
-					return Self::fetch_static_listing(
-						LATEST_TITLES_QUERY,
-						"fetchLatestMangaTitles",
-						None,
-						page,
-					);
 				}
 				"top_manhwa" => {
 					return Self::fetch_static_listing(
@@ -746,12 +905,9 @@ impl<C: Config> DynamicFilters for SenkuroEngine<C> {
 			variables: EmptyVars {},
 		})
 		.map_err(|e| error!("encode filters: {e}"))?;
-		match post_graphql::<FiltersResponse>("fetchTachiyomiSearchFilters", &body) {
+		match post_graphql::<FiltersResponse>("fetchMangaLabels", &body) {
 			Ok(resp) => {
-				let labels = resp
-					.manga_tachiyomi_search_filters
-					.map(|p| p.labels)
-					.unwrap_or_default();
+				let labels = resp.all_labels;
 				out.extend(filters::dynamic_genre_filters(
 					&labels,
 					C::EXCLUDE_GENRES,

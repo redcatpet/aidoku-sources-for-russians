@@ -19,8 +19,8 @@ https://redcatpet.github.io/aidoku-sources-for-russians/index.min.json
 | Источник | Сайт | Версия | Статус | Содержимое |
 | --- | --- | :---: | --- | --- |
 | [AllHentai](sources/ru.allhentai/) | [20.allhen.online](https://20.allhen.online) | v7 | beta, вход через WebView | манга 18+ |
-| [Senkuro](sources/ru.senkuro/) | [senkuro.com](https://senkuro.com) | v14 | работает | манга, манхва, маньхуа, комиксы |
-| [Senkognito](sources/ru.senkognito/) | [senkognito.com](https://senkognito.com) | v13 | работает | хентай-каталог Senkuro |
+| [Senkuro](sources/ru.senkuro/) | [senkuro.com](https://senkuro.com) | v15 | работает | манга, манхва, маньхуа, комиксы |
+| [Senkognito](sources/ru.senkognito/) | [senkognito.com](https://senkognito.com) | v14 | работает | хентай-каталог Senkuro |
 | [ReadManga](sources/ru.readmanga/) | [a.zazaza.me](https://a.zazaza.me) | v8 | beta, вход через WebView | манга |
 | [InkStory](sources/ru.inkstory/) | [inkstory.net](https://inkstory.net) | v2 | beta, вход через WebView | манга, манхва, маньхуа |
 | [MangaBuff](sources/ru.mangabuff/) | [mangabuff.ru](https://mangabuff.ru) | v6 | beta | манга, манхва, маньхуа |
