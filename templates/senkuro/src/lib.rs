@@ -44,6 +44,10 @@ pub trait Config: 'static {
 	const SITE: &'static str;
 	/// Web base URL (no trailing slash). Used for URL fields and deep-link parsing.
 	const BASE_URL: &'static str;
+	/// GraphQL hosts and public application id used by the corresponding website.
+	const DEFAULT_API_DOMAIN: &'static str = "https://api.senkuro.com";
+	const FALLBACK_API_DOMAIN: &'static str = "https://api.senkuro.me";
+	const APP_ID: &'static str = "4026531840100";
 	/// Genre slugs that should always be excluded server-side. Applied by Senkuro to
 	/// hide adult tags; Senkognito leaves this empty.
 	const EXCLUDE_GENRES: &'static [&'static str] = &[];
@@ -243,7 +247,7 @@ impl<C: Config> Source for SenkuroEngine<C> {
 				},
 			})
 			.map_err(|e| error!("encode details: {e}"))?;
-			let data: DetailsData = post_graphql("fetchTachiyomiManga", &body)?;
+			let data: DetailsData = post_graphql::<C, DetailsData>("fetchTachiyomiManga", &body)?;
 			let info = data
 				.manga_tachiyomi_info
 				.ok_or_else(|| error!("manga \"{}\" not found", slug))?;
@@ -268,7 +272,8 @@ impl<C: Config> Source for SenkuroEngine<C> {
 				},
 			})
 			.map_err(|e| error!("encode chapters: {e}"))?;
-			let data: ChaptersData = post_graphql("fetchTachiyomiChapters", &body)?;
+			let data: ChaptersData =
+				post_graphql::<C, ChaptersData>("fetchTachiyomiChapters", &body)?;
 			let payload = data.manga_tachiyomi_chapters.unwrap_or_default();
 			let teams = payload.teams;
 			let chapters: Vec<Chapter> = payload
@@ -293,7 +298,7 @@ impl<C: Config> Source for SenkuroEngine<C> {
 			},
 		})
 		.map_err(|e| error!("encode pages: {e}"))?;
-		let data: PagesData = post_graphql("fetchTachiyomiChapterPages", &body)?;
+		let data: PagesData = post_graphql::<C, PagesData>("fetchTachiyomiChapterPages", &body)?;
 		let pages = data
 			.manga_tachiyomi_chapter_pages
 			.map(|p| p.pages)
@@ -333,7 +338,7 @@ impl<C: Config> DeepLinkHandler for SenkuroEngine<C> {
 			},
 		})
 		.map_err(|e| error!("encode deep link search: {e}"))?;
-		let data: MangasData = post_graphql("resolveDeepLink", &body)?;
+		let data: MangasData = post_graphql::<C, MangasData>("resolveDeepLink", &body)?;
 		let manga = data
 			.manga_tachiyomi_search
 			.unwrap_or_default()
@@ -418,7 +423,8 @@ impl<C: Config> SenkuroEngine<C> {
 			variables: vars,
 		})
 		.map_err(|e| error!("encode web catalog: {e}"))?;
-		let data: MangaConnectionData = post_graphql("fetchMangas", &body)?;
+		let data: MangaConnectionData =
+			post_graphql::<C, MangaConnectionData>("fetchMangas", &body)?;
 		let connection = data.mangas.unwrap_or_default();
 		if let Some(cursor) = connection.page_info.end_cursor.clone() {
 			defaults_set(
@@ -445,7 +451,8 @@ impl<C: Config> SenkuroEngine<C> {
 			variables: PeriodVariables { period },
 		})
 		.map_err(|e| error!("encode popular period: {e}"))?;
-		let data: PopularByPeriodData = post_graphql("fetchMangaPopularByPeriod", &body)?;
+		let data: PopularByPeriodData =
+			post_graphql::<C, PopularByPeriodData>("fetchMangaPopularByPeriod", &body)?;
 		Ok(data
 			.manga_popular_by_period
 			.into_iter()
@@ -473,7 +480,7 @@ impl<C: Config> SenkuroEngine<C> {
 			},
 		})
 		.map_err(|e| error!("encode {operation}: {e}"))?;
-		let data: MangaConnectionData = post_graphql(operation, &body)?;
+		let data: MangaConnectionData = post_graphql::<C, MangaConnectionData>(operation, &body)?;
 		Ok(data
 			.mangas
 			.unwrap_or_default()
@@ -905,7 +912,7 @@ impl<C: Config> DynamicFilters for SenkuroEngine<C> {
 			variables: EmptyVars {},
 		})
 		.map_err(|e| error!("encode filters: {e}"))?;
-		match post_graphql::<FiltersResponse>("fetchMangaLabels", &body) {
+		match post_graphql::<C, FiltersResponse>("fetchMangaLabels", &body) {
 			Ok(resp) => {
 				let labels = resp.all_labels;
 				out.extend(filters::dynamic_genre_filters(
@@ -934,24 +941,35 @@ impl<C: Config> ImageRequestProvider for SenkuroEngine<C> {
 	}
 }
 
-fn post_graphql<T: DeserializeOwned>(operation: &str, body: &[u8]) -> Result<T> {
-	let url = settings::api_url();
-	match post_graphql_at(operation, body, &url) {
+fn post_graphql<C: Config, T: DeserializeOwned>(operation: &str, body: &[u8]) -> Result<T> {
+	let url = settings::api_url(C::DEFAULT_API_DOMAIN, C::FALLBACK_API_DOMAIN);
+	match post_graphql_at::<C, T>(operation, body, &url) {
 		Ok(data) => Ok(data),
 		Err(primary_error) => {
-			let fallback = settings::fallback_api_url(&url);
+			let fallback = settings::fallback_api_url(
+				&url,
+				C::DEFAULT_API_DOMAIN,
+				C::FALLBACK_API_DOMAIN,
+			);
 			println!(
 				"[senkuro:{operation}] {url} failed, retrying through {fallback}: {primary_error:?}"
 			);
-			post_graphql_at(operation, body, &fallback)
+			post_graphql_at::<C, T>(operation, body, &fallback)
 		}
 	}
 }
 
-fn post_graphql_at<T: DeserializeOwned>(operation: &str, body: &[u8], url: &str) -> Result<T> {
+fn post_graphql_at<C: Config, T: DeserializeOwned>(
+	operation: &str,
+	body: &[u8],
+	url: &str,
+) -> Result<T> {
 	let response = Request::post(url)?
 		.header("Content-Type", "application/json")
 		.header("Accept", "application/json")
+		.header("App-Id", C::APP_ID)
+		.header("Origin", C::BASE_URL)
+		.header("Referer", C::BASE_URL)
 		.header(
 			"User-Agent",
 			"Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
