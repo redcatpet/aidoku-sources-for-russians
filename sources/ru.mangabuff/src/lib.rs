@@ -241,13 +241,17 @@ fn fill_details(doc: &Document, manga: &mut Manga) {
 		.and_then(|e| e.attr("content"))
 		.filter(|s| !s.is_empty());
 
-	let mut tags: Vec<String> = Vec::new();
-	if let Some(genres) = doc.select(".manga__genres a, .info__list-text a[href*='?genres=']") {
-		for g in genres {
-			if let Some(t) = g.text() {
-				let trimmed = t.trim();
-				if !trimmed.is_empty() {
-					tags.push(trimmed.to_string());
+	// The current MangaBuff layout keeps age rating, genres and descriptive
+	// tags together in `.manga__middle .tags`. Preserve the type/primary genre
+	// from the catalog tile, then append every unique detail tag. The page has
+	// duplicate desktop/mobile blocks, hence the explicit de-duplication.
+	let mut tags = manga.tags.clone().unwrap_or_default();
+	if let Some(detail_tags) = doc.select(".manga__middle .tags .tags__item") {
+		for tag in detail_tags {
+			if let Some(text) = tag.text() {
+				let value = text.trim();
+				if !value.is_empty() && !tags.iter().any(|existing| existing == value) {
+					tags.push(value.to_string());
 				}
 			}
 		}
@@ -451,15 +455,16 @@ impl Home for MangaBuff {
 	fn get_home(&self) -> Result<HomeLayout> {
 		let doc = fetch_html(&base_url())?;
 		let popular = parse_home_section(&doc, 0);
-		let hot = parse_home_section(&doc, 1);
-		let latest = parse_home_section(&doc, 2);
+		let mut hot = parse_home_section(&doc, 1);
+		let mut latest = parse_home_section(&doc, 2);
 
 		let mut featured: Vec<Manga> = popular.iter().take(3).cloned().collect();
-		for manga in &mut featured {
-			if let Ok(details) = fetch_html(&site_url(&format!("/manga/{}", manga.key))) {
-				fill_details(&details, manga);
-			}
-		}
+		enrich_entries(&mut featured, 3);
+		// MangaBuff exposes only type + primary genre in home-card HTML. Fetch
+		// details for the six rows Aidoku actually renders in each MangaList so
+		// those cards carry the complete tag set without enriching all 20 items.
+		enrich_entries(&mut hot, 6);
+		enrich_entries(&mut latest, 6);
 
 		let manga = home_catalog("/types/manga").unwrap_or_default();
 		let manhwa = home_catalog("/types/manxva").unwrap_or_default();
@@ -508,6 +513,14 @@ impl Home for MangaBuff {
 				},
 			],
 		})
+	}
+}
+
+fn enrich_entries(entries: &mut [Manga], limit: usize) {
+	for manga in entries.iter_mut().take(limit) {
+		if let Ok(details) = fetch_html(&site_url(&format!("/manga/{}", manga.key))) {
+			fill_details(&details, manga);
+		}
 	}
 }
 
