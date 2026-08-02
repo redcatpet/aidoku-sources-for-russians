@@ -399,6 +399,20 @@ impl Source for MangaBuff {
 
 impl ListingProvider for MangaBuff {
 	fn get_manga_list(&self, listing: Listing, page: i32) -> Result<MangaPageResult> {
+		if matches!(listing.id.as_str(), "hot" | "latest") {
+			if page > 1 {
+				return Ok(MangaPageResult {
+					entries: Vec::new(),
+					has_next_page: false,
+				});
+			}
+			let doc = fetch_html(&base_url())?;
+			let index = if listing.id == "hot" { 1 } else { 2 };
+			return Ok(MangaPageResult {
+				entries: parse_home_section(&doc, index),
+				has_next_page: false,
+			});
+		}
 		let path = match listing.id.as_str() {
 			"manga" => "/types/manga",
 			"manhwa" => "/types/manxva",
@@ -414,14 +428,9 @@ impl ListingProvider for MangaBuff {
 impl Home for MangaBuff {
 	fn get_home(&self) -> Result<HomeLayout> {
 		let doc = fetch_html(&base_url())?;
-		let carousels = doc
-			.select("div.cards.owl-carousel")
-			.map(|list| list.into_iter().collect::<Vec<_>>())
-			.unwrap_or_default();
-
-		let popular = carousels.first().map(parse_tiles).unwrap_or_default();
-		let hot = carousels.get(1).map(parse_tiles).unwrap_or_default();
-		let latest = carousels.get(2).map(parse_tiles).unwrap_or_default();
+		let popular = parse_home_section(&doc, 0);
+		let hot = parse_home_section(&doc, 1);
+		let latest = parse_home_section(&doc, 2);
 
 		let mut featured: Vec<Manga> = popular.iter().take(3).cloned().collect();
 		for manga in &mut featured {
@@ -451,7 +460,7 @@ impl Home for MangaBuff {
 						ranking: false,
 						page_size: Some(6),
 						entries: hot.into_iter().take(6).map(Link::from).collect(),
-						listing: None,
+						listing: Some(listing("hot", "Горячие новинки")),
 					},
 				},
 				HomeComponent {
@@ -461,7 +470,7 @@ impl Home for MangaBuff {
 						ranking: false,
 						page_size: Some(6),
 						entries: latest.into_iter().take(6).map(Link::from).collect(),
-						listing: None,
+						listing: Some(listing("latest", "Новое на сайте")),
 					},
 				},
 				catalog_scroller("Манга", "Японские тайтлы", manga, "manga"),
@@ -478,6 +487,13 @@ impl Home for MangaBuff {
 			],
 		})
 	}
+}
+
+fn parse_home_section(doc: &Document, index: usize) -> Vec<Manga> {
+	doc.select("div.cards.owl-carousel")
+		.and_then(|list| list.into_iter().nth(index))
+		.map(|section| parse_tiles(&section))
+		.unwrap_or_default()
 }
 
 fn home_catalog(path: &str) -> Result<Vec<Manga>> {

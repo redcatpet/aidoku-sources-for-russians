@@ -275,14 +275,29 @@ impl<C: Config> DeepLinkHandler for SenkuroEngine<C> {
 		if slug.is_empty() {
 			return Ok(None);
 		}
-		// We don't know the manga ID without an API call. Use slug alone as the key
-		// suffix, leaving the prefix empty — split_manga_key handles single-token keys
-		// by returning (key, key). The first details fetch will then fail because the
-		// API needs an ID; in practice users open mangas through the catalog where the
-		// key is already in `id,,slug` form, so this fallback only matters for direct
-		// shared links.
-		Ok(Some(DeepLinkResult::Manga {
-			key: alloc::format!(",,{}", slug),
+		let body = serde_json::to_vec(&GqlRequest {
+			query: MANGAS_QUERY,
+			variables: MangasVariables {
+				search: Some(slug.to_string()),
+				kind: None,
+				status: None,
+				translation_status: None,
+				label: default_label::<C>(),
+				format: None,
+				rating: default_rating::<C>(),
+				offset: Some(0),
+			},
+		})
+		.map_err(|e| error!("encode deep link search: {e}"))?;
+		let data: MangasData = post_graphql("resolveDeepLink", &body)?;
+		let manga = data
+			.manga_tachiyomi_search
+			.unwrap_or_default()
+			.mangas
+			.into_iter()
+			.find(|manga| manga.slug == slug);
+		Ok(manga.map(|manga| DeepLinkResult::Manga {
+			key: build_manga_key(&manga.id, &manga.slug),
 		}))
 	}
 }
@@ -720,7 +735,11 @@ impl<C: Config> DynamicFilters for SenkuroEngine<C> {
 					.manga_tachiyomi_search_filters
 					.map(|p| p.labels)
 					.unwrap_or_default();
-				out.extend(filters::dynamic_genre_filters(&labels, C::EXCLUDE_GENRES));
+				out.extend(filters::dynamic_genre_filters(
+					&labels,
+					C::EXCLUDE_GENRES,
+					!C::DEFAULT_RATING_INCLUDE.is_empty(),
+				));
 			}
 			Err(e) => {
 				println!("[senkuro] dynamic filters fetch failed, returning static only: {e:?}");
@@ -744,7 +763,23 @@ impl<C: Config> ImageRequestProvider for SenkuroEngine<C> {
 
 fn post_graphql<T: DeserializeOwned>(operation: &str, body: &[u8]) -> Result<T> {
 	let url = settings::api_url();
-	let response = Request::post(&url)?
+	match post_graphql_at(operation, body, &url) {
+		Ok(data) => Ok(data),
+		Err(primary_error) => {
+			let fallback = settings::public_api_url();
+			if url == fallback {
+				return Err(primary_error);
+			}
+			println!(
+				"[senkuro:{operation}] {url} failed, retrying through {fallback}: {primary_error:?}"
+			);
+			post_graphql_at(operation, body, &fallback)
+		}
+	}
+}
+
+fn post_graphql_at<T: DeserializeOwned>(operation: &str, body: &[u8], url: &str) -> Result<T> {
+	let response = Request::post(url)?
 		.header("Content-Type", "application/json")
 		.header("Accept", "application/json")
 		.header(

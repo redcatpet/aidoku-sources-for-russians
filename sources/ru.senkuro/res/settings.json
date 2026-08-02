@@ -2,21 +2,22 @@
 	{
 		"type": "group",
 		"title": "Настройки",
+		"footer": "Публичный API работает с VPN и используется по умолчанию. Если региональный API недоступен, источник автоматически повторит запрос через публичный.",
 		"items": [
 			{
 				"type": "select",
 				"key": "apiDomain",
 				"title": "Домен API",
 				"values": [
-					"https://api.senkuro.me",
-					"https://api.senkuro.com"
+					"https://api.senkuro.com",
+					"https://api.senkuro.me"
 				],
 				"titles": [
-					"Россия (senkuro.me)",
-					"Публичный (senkuro.com)"
+					"Публичный — senkuro.com",
+					"Россия — senkuro.me"
 				],
-				"default": "https://api.senkuro.me",
-				"refreshes": ["content"]
+				"default": "https://api.senkuro.com",
+				"refreshes": ["listings", "content"]
 			},
 			{
 				"type": "switch",

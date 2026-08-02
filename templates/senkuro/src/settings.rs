@@ -6,6 +6,10 @@ const ENGLISH_TITLES_KEY: &str = "englishTitles";
 
 pub const DEFAULT_API_DOMAIN: &str = "https://api.senkuro.com";
 
+pub fn public_api_url() -> String {
+	alloc::format!("{DEFAULT_API_DOMAIN}/graphql")
+}
+
 pub fn api_url() -> String {
 	let mut base =
 		defaults_get::<String>(API_DOMAIN_KEY).unwrap_or_else(|| DEFAULT_API_DOMAIN.to_string());

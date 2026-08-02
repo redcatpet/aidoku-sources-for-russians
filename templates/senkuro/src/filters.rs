@@ -118,6 +118,7 @@ pub fn static_filters() -> Vec<Filter> {
 /// filter UI. Order here is the order they appear under the static filters.
 pub const VISIBLE_ROOTS: &[(&str, &str)] = &[
 	("TEFCRUw6Nw", "Демография"),
+	("TEFCRUw6MQ", "Главный герой"),
 	("TEFCRUw6NQ", "Темы"),
 	("TEFCRUw6NA", "Сеттинг"),
 	("TEFCRUw6Mw", "Черты"),
@@ -130,13 +131,18 @@ pub const VISIBLE_ROOTS: &[(&str, &str)] = &[
 pub fn dynamic_genre_filters(
 	labels: &[LabelDto],
 	exclude_genres: &[&'static str],
+	include_adult: bool,
 ) -> Vec<Filter> {
 	let mut out: Vec<Filter> = Vec::new();
-	for (root_id, group_title) in VISIBLE_ROOTS {
+	let roots = VISIBLE_ROOTS
+		.iter()
+		.copied()
+		.chain(include_adult.then_some(("TEFCRUw6Mg", "18+ теги")));
+	for (root_id, group_title) in roots {
 		let mut options: Vec<Cow<'static, str>> = Vec::new();
 		let mut ids: Vec<Cow<'static, str>> = Vec::new();
 		for l in labels {
-			if l.root_id.as_deref() != Some(*root_id) {
+			if l.root_id.as_deref() != Some(root_id) {
 				continue;
 			}
 			if exclude_genres.iter().any(|g| *g == l.slug.as_str()) {
@@ -151,7 +157,7 @@ pub fn dynamic_genre_filters(
 		out.push(
 			MultiSelectFilter {
 				id: Cow::Owned(format!("label_{root_id}")),
-				title: Some(Cow::Borrowed(*group_title)),
+				title: Some(Cow::Borrowed(group_title)),
 				is_genre: true,
 				can_exclude: true,
 				uses_tag_style: true,

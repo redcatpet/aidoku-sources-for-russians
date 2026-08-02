@@ -2,71 +2,37 @@
 
 [![Добавить в Aidoku](https://img.shields.io/badge/%D0%94%D0%BE%D0%B1%D0%B0%D0%B2%D0%B8%D1%82%D1%8C%20%D0%B2-Aidoku-ff2d55?style=for-the-badge)](https://redcatpet.github.io/aidoku-sources-for-russians/)
 
-Русскоязычные источники для [Aidoku](https://aidoku.app) на iOS/iPadOS.
+Русскоязычные источники для [Aidoku](https://aidoku.app) на iPhone и iPad.
 
 ## Установка
 
-Нажмите кнопку выше или откройте на iPhone/iPad:
-
-```text
-https://redcatpet.github.io/aidoku-sources-for-russians/
-```
-
-и нажмите `Добавить в Aidoku`.
-
-Для ручной установки в Aidoku откройте `Настройки` → `Список источников` → `+` и вставьте URL:
+Нажмите кнопку выше или добавьте список вручную: `Настройки` → `Список источников` → `+`.
 
 ```text
 https://redcatpet.github.io/aidoku-sources-for-russians/index.min.json
 ```
 
-Если GitHub Pages ещё не обновился, можно временно добавить raw-индекс:
-
-```text
-https://raw.githubusercontent.com/redcatpet/aidoku-sources-for-russians/gh-pages/index.min.json
-```
-
-После добавления списка источники появятся в разделе установки. Если Aidoku показывает старые данные, удалите этот список источников, полностью закройте приложение и добавьте URL заново.
+После установки списка выберите и установите нужные источники в Aidoku. Новые версии публикуются по тому же адресу автоматически.
 
 ## Источники
 
 | Источник | Сайт | Версия | Статус | Содержимое |
 | --- | --- | :---: | --- | --- |
-| [AllHentai](sources/ru.allhentai/) | https://allhen.online | v6 | beta, web-login | манга 18+ |
-| [Senkuro](sources/ru.senkuro/) | https://senkuro.com | v12 | работает | манга, манхва, маньхуа, комиксы |
-| [Senkognito](sources/ru.senkognito/) | https://senkognito.com | v11 | работает | 18+ каталог Senkuro |
-| [ReadManga](sources/ru.readmanga/) | https://readmanga.live | v7 | beta, web-login | манга |
-| [InkStory](sources/ru.inkstory/) | https://inkstory.net | v2 | beta, web-login | манга, манхва, маньхуа |
-| [MangaBuff](sources/ru.mangabuff/) | https://mangabuff.ru | v2 | beta | манга, манхва, маньхуа |
-| [Ranobes](sources/ru.ranobes/) | https://ranobes.com | v7 | beta | ранобэ |
-| [RanobeHub](sources/ru.ranobehub/) | https://ranobehub.org | v2 | beta | ранобэ |
-| [Ранобэ.рф](sources/ru.ranoberf/) | https://ранобэ.рф | v4 | beta | ранобэ |
+| [AllHentai](sources/ru.allhentai/) | [allhen.online](https://allhen.online) | v6 | beta, вход через WebView | манга 18+ |
+| [Senkuro](sources/ru.senkuro/) | [senkuro.com](https://senkuro.com) | v13 | работает | манга, манхва, маньхуа, комиксы |
+| [Senkognito](sources/ru.senkognito/) | [senkognito.com](https://senkognito.com) | v12 | работает | каталог 18+ Senkuro |
+| [ReadManga](sources/ru.readmanga/) | [readmanga.live](https://readmanga.live) | v7 | beta, вход через WebView | манга |
+| [InkStory](sources/ru.inkstory/) | [inkstory.net](https://inkstory.net) | v2 | beta, вход через WebView | манга, манхва, маньхуа |
+| [MangaBuff](sources/ru.mangabuff/) | [mangabuff.ru](https://mangabuff.ru) | v3 | beta | манга, манхва, маньхуа |
+| [Ranobes](sources/ru.ranobes/) | [ranobes.com](https://ranobes.com) | v7 | beta | ранобэ |
+| [RanobeHub](sources/ru.ranobehub/) | [ranobehub.org](https://ranobehub.org) | v2 | beta | ранобэ |
+| [Ранобэ.рф](sources/ru.ranoberf/) | [ранобэ.рф](https://ранобэ.рф) | v4 | beta | ранобэ |
 
-## Что исправлено в этом форке
-
-- Senkuro снова использует актуальный GraphQL-запрос `mangaTachiyomiSearch` и типы фильтров `MangaTachiyomiSearch*Filter`.
-- У Senkuro обновлены типы фильтров поиска после изменения схемы API: label, format и rating больше не падают с `Unknown type`.
-- Фильтры типа, формата, статуса, статуса перевода, жанров и возрастного рейтинга снова передаются в API.
-- У Ранобэ.рф исправлена битая кодировка описаний и текста глав.
-- У Ранобэ.рф добавлен повтор сетевого запроса и fallback-каталог через главную страницу, если `/v3/book` обрывается.
-- У Ranobes первая страница каталога открывается без редиректа, а карточки разбираются более устойчиво при изменениях HTML-разметки.
-- У Senkuro исправлена пагинация разделов: API отдаёт по 10 элементов, и Aidoku теперь догружает следующие страницы.
-- Домашняя страница Senkuro стала ближе к сайту: «Самое читаемое» за день/неделю/месяц, последние обновления, новые тайтлы, топ манхв и типовые ленты берутся из актуального API `api.senkuro.com`.
-- Верхняя витрина Senkuro получает описания, авторов и теги, а обложки грузятся через уменьшенные изображения, чтобы лента открывалась быстрее.
-- У ReadManga добавлена домашняя страница с большой витриной, популярным, последними обновлениями и новинками.
-- У ReadManga настройки стали чище: убраны нерабочие ручные Cookies/Auth Token, домен выбирается из списка, карточки получили рейтинг/главы/жанры/описание, а обложка больше не прыгает при открытии тайтла.
-- Добавлен InkStory с живыми подборками с API сайта, красивой домашней страницей, поиском, чтением глав и авторизацией через WebView/Cookie/Access Token.
-- У InkStory исправлена загрузка обложек: источник больше не добавляет параметры ресайза, которые CDN `static.inuko.me` сейчас отдаёт как 404.
-- У MangaBuff добавлен выбор основного и двух зарубежных хостов для работы через VPN; выбранный домен теперь применяется ко всем внутренним ссылкам и изображениям.
-- Главная MangaBuff расширена живыми новинками, рейтингами и типами, а каталоги манги, манхвы и маньхуа вынесены в отдельные разделы.
-- Версии изменённых источников увеличены, чтобы Aidoku предложил обновление после публикации списка.
-- README и ссылки на список источников обновлены под репозиторий `redcatpet/aidoku-sources-for-russians`.
+Некоторые сайты ограничивают доступ по региону, VPN или возрасту. Доступные домены и авторизация находятся в настройках соответствующего источника.
 
 ## Разработка
 
-Каждый источник находится в `sources/<id>` и собирается через [aidoku-rs](https://github.com/Aidoku/aidoku-rs).
-
-Локальная сборка отдельного источника:
+Исходники находятся в `sources/<id>`, общий код — в `templates/`. Пакеты собираются через [aidoku-rs](https://github.com/Aidoku/aidoku-rs).
 
 ```bash
 rustup target add wasm32-unknown-unknown
@@ -75,10 +41,8 @@ cd sources/ru.senkuro
 aidoku package
 ```
 
-Публикация автоматическая: при пуше изменений в `sources/**`, `templates/**`, `public-template/**` или workflow GitHub Actions собирает `.aix` пакеты, создаёт `index.min.json` и выкладывает результат в ветку `gh-pages`.
+Пуш в `main` запускает GitHub Actions, обновляет `.aix`, индекс источников и GitHub Pages.
 
 ## Лицензия
 
-MIT. См. [LICENSE](LICENSE).
-
-Этот репозиторий не связан с владельцами сайтов-источников или приложением Aidoku.
+MIT. Репозиторий не связан с владельцами сайтов или разработчиками Aidoku.
